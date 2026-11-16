@@ -49,8 +49,21 @@ export function OverviewView({
 }: OverviewViewProps) {
   const [hoveredWeek, setHoveredWeek] = useState<number | null>(null);
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
+  const [stateSort, setStateSort] = useState<'count' | 'pct'>('count');
   const [opSortKey, setOpSortKey] = useState<OpSortKey>('billingDone');
   const [opSortAsc, setOpSortAsc] = useState(false);
+
+  const sortedStates = useMemo(() => {
+    const list = [...stats.stateStats];
+    if (stateSort === 'pct') {
+      list.sort(
+        (a, b) => b.attainmentPct - a.attainmentPct || b.total - a.total,
+      );
+    } else {
+      list.sort((a, b) => b.total - a.total);
+    }
+    return list;
+  }, [stats.stateStats, stateSort]);
 
   const selectedWeekIdx = getWeekIndex(filters.week);
   const activeWeekMeta = getWeekMeta(filters.week);
@@ -594,20 +607,52 @@ export function OverviewView({
         </section>
 
         <section className="bg-white border border-slate-200 rounded-lg p-5">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between gap-2 mb-3">
             <div>
-              <h2 className="text-sm font-semibold text-slate-900">Top States</h2>
+              <h2 className="text-sm font-semibold text-slate-900">
+                Top States ({stats.stateStats.length})
+              </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Click a state to filter records
+                {activeWeekMeta
+                  ? `${activeWeekMeta.wkLabel} video % · click state to filter`
+                  : 'Billing done % & share · click state to filter'}
               </p>
             </div>
-            <span className="text-xs font-mono tabular-nums text-slate-500">
-              {stats.stateStats.length} states
-            </span>
+            <div
+              className="inline-flex items-center bg-slate-100 p-0.5 rounded border border-slate-200 shrink-0"
+              role="group"
+              aria-label="Sort top states"
+            >
+              <button
+                type="button"
+                onClick={() => setStateSort('count')}
+                className={`px-2 py-0.5 text-[11px] font-medium rounded cursor-pointer ${
+                  stateSort === 'count'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Count
+              </button>
+              <button
+                type="button"
+                onClick={() => setStateSort('pct')}
+                className={`px-2 py-0.5 text-[11px] font-medium rounded cursor-pointer ${
+                  stateSort === 'pct'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Done %
+              </button>
+            </div>
           </div>
-          <div className="divide-y divide-slate-100 max-h-44 overflow-y-auto pr-1">
-            {stats.stateStats.slice(0, 10).map((st) => {
+          <div className="divide-y divide-slate-100 max-h-52 overflow-y-auto pr-1">
+            {sortedStates.map((st) => {
               const active = filters.state === st.state;
+              const completedCount = activeWeekMeta
+                ? st.selectedWeekVideoNetworks
+                : st.billingDone;
               return (
                 <button
                   key={st.state}
@@ -618,16 +663,48 @@ export function OverviewView({
                       state: active ? 'ALL' : st.state,
                     })
                   }
-                  className={`w-full py-2 px-1.5 flex items-center justify-between text-xs text-left cursor-pointer transition-colors ${
+                  className={`w-full py-2 px-1.5 text-xs text-left cursor-pointer transition-colors space-y-1 ${
                     active
                       ? 'bg-blue-50 text-blue-900'
                       : 'hover:bg-slate-50 text-slate-700'
                   }`}
                 >
-                  <span className="font-medium truncate pr-2">{st.state}</span>
-                  <span className="font-mono tabular-nums text-slate-600 shrink-0">
-                    {st.total} ({st.billingDone} done)
-                  </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium truncate">
+                      {st.state}{' '}
+                      <span className="text-[11px] font-mono font-normal text-slate-400">
+                        ({st.sharePct}%)
+                      </span>
+                    </span>
+                    <span className="font-mono tabular-nums text-slate-700 shrink-0">
+                      {completedCount}/{st.total}{' '}
+                      <strong
+                        className={
+                          st.attainmentPct >= 60
+                            ? 'text-emerald-700'
+                            : st.attainmentPct >= 30
+                              ? 'text-amber-700'
+                              : 'text-slate-600'
+                        }
+                      >
+                        {st.attainmentPct}%
+                      </strong>
+                    </span>
+                  </div>
+                  <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all ${
+                        active
+                          ? 'bg-blue-600'
+                          : st.attainmentPct >= 60
+                            ? 'bg-emerald-600'
+                            : st.attainmentPct >= 30
+                              ? 'bg-amber-500'
+                              : 'bg-slate-400'
+                      }`}
+                      style={{ width: `${st.attainmentPct}%` }}
+                    />
+                  </div>
                 </button>
               );
             })}

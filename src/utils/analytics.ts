@@ -182,6 +182,10 @@ export interface ComputedOverviewStats {
     online: number;
     billingDone: number;
     payoutINR: number;
+    selectedWeekBox: number;
+    selectedWeekVideoNetworks: number;
+    sharePct: number;
+    attainmentPct: number;
   }[];
   exceptionCounts: {
     label: string;
@@ -377,15 +381,38 @@ export function computeOverviewStats(
         online: 0,
         billingDone: 0,
         payoutINR: 0,
+        selectedWeekBox: 0,
+        selectedWeekVideoNetworks: 0,
+        sharePct: 0,
+        attainmentPct: 0,
       };
       stateMap.set(stKey, stEntry);
     }
     stEntry.total++;
     if (rec.type === 'ONLINE') stEntry.online++;
     if (rec.asPerBilling === 'DONE') stEntry.billingDone++;
+    if (wkIdx !== null) {
+      const w = rec.weeks[wkIdx];
+      if (w) {
+        if (w.boxCount > 0) stEntry.selectedWeekBox++;
+        if (w.videoCount > 0) stEntry.selectedWeekVideoNetworks++;
+      }
+    }
     stEntry.payoutINR += wkIdx !== null
       ? (rec.weeks[wkIdx]?.videoCount ?? 0) * payablePerVideo
       : rec.finalAmountToPay;
+  }
+
+  const totalRecordCount = records.length;
+  for (const st of stateMap.values()) {
+    st.sharePct =
+      totalRecordCount > 0
+        ? Math.round((st.total / totalRecordCount) * 1000) / 10
+        : 0;
+    const completed =
+      wkIdx !== null ? st.selectedWeekVideoNetworks : st.billingDone;
+    st.attainmentPct =
+      st.total > 0 ? Math.round((completed / st.total) * 100) : 0;
   }
 
   const operatorStats = Array.from(opMap.values()).sort((a, b) =>
