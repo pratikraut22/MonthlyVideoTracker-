@@ -1,0 +1,8 @@
+{
+  "name": "Network Landing & Video Tracker",
+  "description": "Interactive broadcast network landing, weekly video verification, operator performance, DTH logging, and billing reconciliation dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
