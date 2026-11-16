@@ -15,6 +15,7 @@ import {
   X,
 } from 'lucide-react';
 import { BillingExceptionsView } from './components/BillingExceptionsView';
+import { DashboardSnapshotView } from './components/DashboardSnapshotView';
 import { DthSonyView } from './components/DthSonyView';
 import { FilterBar } from './components/FilterBar';
 import { MasterTrackerView } from './components/MasterTrackerView';
@@ -29,12 +30,14 @@ import {
 import type {
   ActiveTab,
   MasterNetworkRecord,
+  MonthScope,
   TrackerFilters,
   WorkbookData,
 } from './types/tracker';
 import {
   DEFAULT_FILTERS,
   computeOverviewStats,
+  exportDashboardSnapshotToCsv,
   exportRecordsToCsv,
   filterMasterRecords,
 } from './utils/analytics';
@@ -56,6 +59,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>('overview');
+  const [monthScope, setMonthScope] = useState<MonthScope>('nov2026');
   const [filters, setFilters] = useState<TrackerFilters>(DEFAULT_FILTERS);
   const [selectedOperatorQueue, setSelectedOperatorQueue] = useState('ARBIND');
   const [inspectedRecord, setInspectedRecord] =
@@ -73,6 +77,7 @@ export default function App() {
     try {
       const data = await loadDefaultWorkbook();
       setWorkbook(data);
+      setMonthScope(data.novemberDashboard ? 'nov2026' : 'oct2026');
       setIsCustomUpload(false);
     } catch (err) {
       setError(
@@ -96,6 +101,13 @@ export default function App() {
     try {
       const parsed = await parseUploadedWorkbook(file);
       setWorkbook(parsed);
+      setMonthScope(
+        parsed.masterRecords.length > 0
+          ? 'oct2026'
+          : parsed.novemberDashboard
+            ? 'nov2026'
+            : 'oct2026',
+      );
       setIsCustomUpload(true);
       setFilters(DEFAULT_FILTERS);
     } catch (err) {
@@ -228,8 +240,18 @@ export default function App() {
               {workbook ? workbook.periodLabel : 'Loading workbook...'}
             </div>
             {workbook && (
-              <div className="text-[11px] font-mono tabular-nums text-slate-500">
-                {workbook.masterRecords.length} networks · {workbook.dthLogs.length} DTH
+              <div className="text-[11px] font-mono tabular-nums text-slate-500 space-y-0.5">
+                {workbook.novemberDashboard && (
+                  <div className="text-emerald-700 font-medium">
+                    Nov 2026: {workbook.novemberDashboard.totals?.allAchieve ?? 0} achieve ·{' '}
+                    {workbook.novemberDashboard.activeWeekHint}
+                  </div>
+                )}
+                {workbook.masterRecords.length > 0 && (
+                  <div>
+                    Oct 2026: {workbook.masterRecords.length} networks · {workbook.dthLogs.length} DTH
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -276,6 +298,14 @@ export default function App() {
               <h1 className="font-semibold text-slate-900 truncate">
                 {activeNavMeta.label}
               </h1>
+              {workbook && (
+                <span className="hidden md:inline text-xs font-mono text-slate-500">
+                  ·{' '}
+                  {monthScope === 'nov2026' && workbook.novemberDashboard
+                    ? 'November 2026'
+                    : 'October 2026'}
+                </span>
+              )}
             </div>
           </div>
 
@@ -290,8 +320,20 @@ export default function App() {
             </button>
             <button
               type="button"
-              disabled={!workbook || filteredRecords.length === 0}
-              onClick={() => exportRecordsToCsv(filteredRecords)}
+              disabled={
+                !workbook ||
+                (monthScope === 'nov2026' && workbook.novemberDashboard
+                  ? workbook.novemberDashboard.operators.length === 0
+                  : filteredRecords.length === 0)
+              }
+              onClick={() => {
+                if (!workbook) return;
+                if (monthScope === 'nov2026' && workbook.novemberDashboard) {
+                  exportDashboardSnapshotToCsv(workbook.novemberDashboard);
+                } else {
+                  exportRecordsToCsv(filteredRecords);
+                }
+              }}
               className="h-8 px-3 inline-flex items-center gap-1.5 text-xs font-medium text-white bg-slate-900 rounded hover:bg-slate-800 disabled:opacity-40 whitespace-nowrap shrink-0 cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
@@ -351,70 +393,143 @@ export default function App() {
               <WeekSelectorBar
                 selectedWeek={filters.week}
                 onSelectWeek={(week) => setFilters({ ...filters, week })}
+                monthScope={monthScope}
+                onSelectMonthScope={(nextScope) => {
+                  setMonthScope(nextScope);
+                  setFilters({ ...filters, week: 'ALL' });
+                }}
+                hasNovember={Boolean(workbook.novemberDashboard)}
+                hasMaster={workbook.masterRecords.length > 0}
+                novActiveWeekHint={workbook.novemberDashboard?.activeWeekHint ?? 'W3'}
+                masterCount={workbook.masterRecords.length}
               />
 
-              {(activeTab === 'overview' ||
-                activeTab === 'master' ||
-                activeTab === 'billing') && (
-                <FilterBar
-                  filters={filters}
-                  onChange={setFilters}
-                  onReset={() => setFilters(DEFAULT_FILTERS)}
-                  operators={operators}
-                  states={states}
-                  totalCount={workbook.masterRecords.length}
-                  filteredCount={filteredRecords.length}
-                />
-              )}
+              {monthScope === 'nov2026' && workbook.novemberDashboard ? (
+                <>
+                  {(activeTab === 'overview' ||
+                    activeTab === 'operators' ||
+                    activeTab === 'billing') && (
+                    <DashboardSnapshotView
+                      snapshot={workbook.novemberDashboard}
+                      baselineTotals={workbook.dashboardTotals}
+                      baselineOperators={workbook.dashboardOperators}
+                      selectedWeek={filters.week}
+                      onSelectWeek={(week) => setFilters({ ...filters, week })}
+                      onSwitchToOct={
+                        workbook.masterRecords.length > 0
+                          ? () => setMonthScope('oct2026')
+                          : undefined
+                      }
+                      sectionFocus={activeTab}
+                    />
+                  )}
 
-              {activeTab === 'overview' && (
-                <OverviewView
-                  stats={overviewStats}
-                  dashboardOperators={workbook.dashboardOperators}
-                  filters={filters}
-                  onUpdateFilters={setFilters}
-                  onJumpToMaster={() => setActiveTab('master')}
-                  onJumpToOperatorQueue={handleJumpToOperatorQueue}
-                />
-              )}
+                  {(activeTab === 'master' || activeTab === 'dth') && (
+                    <div className="bg-white border border-slate-200 rounded-lg p-8 text-center space-y-3">
+                      <FileSpreadsheet className="w-8 h-8 text-slate-400 mx-auto" />
+                      <h2 className="text-base font-semibold text-slate-900">
+                        {activeTab === 'master'
+                          ? 'Row-level Master sheet is not included in the November 2026 CSV'
+                          : 'DTH & Sony sheets are not included in the November 2026 CSV'}
+                      </h2>
+                      <p className="text-xs text-slate-600 max-w-lg mx-auto leading-relaxed">
+                        The attached <span className="font-mono">Monthly Video Tracker - November 2026 - Landing.csv</span> file contains the{' '}
+                        <strong className="text-slate-900">DASHBOARD</strong> summary sheet (727 achieve · 873 roster · W1–W3). You can upload a full November Master/DTH CSV or switch to the full October 2026 workbook (872 master rows, 224 DTH logs, 15 Sony DPOs).
+                      </p>
+                      <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
+                        {workbook.masterRecords.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setMonthScope('oct2026')}
+                            className="h-8 px-3.5 text-xs font-medium bg-slate-900 text-white rounded hover:bg-slate-800 whitespace-nowrap shrink-0 cursor-pointer"
+                          >
+                            Switch to Oct 2026 Full ({workbook.masterRecords.length} rows)
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('overview')}
+                          className="h-8 px-3.5 text-xs font-medium bg-white text-slate-700 border border-slate-200 rounded hover:bg-slate-50 whitespace-nowrap shrink-0 cursor-pointer"
+                        >
+                          Back to Nov 2026 Overview
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="h-8 px-3.5 text-xs font-medium bg-white text-blue-700 border border-slate-200 rounded hover:bg-blue-50 whitespace-nowrap shrink-0 cursor-pointer"
+                        >
+                          Import Nov Master .xlsx / .csv
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {(activeTab === 'overview' ||
+                    activeTab === 'master' ||
+                    activeTab === 'billing') && (
+                    <FilterBar
+                      filters={filters}
+                      onChange={setFilters}
+                      onReset={() => setFilters(DEFAULT_FILTERS)}
+                      operators={operators}
+                      states={states}
+                      totalCount={workbook.masterRecords.length}
+                      filteredCount={filteredRecords.length}
+                    />
+                  )}
 
-              {activeTab === 'master' && (
-                <MasterTrackerView
-                  records={filteredRecords}
-                  selectedWeek={filters.week}
-                  onSelectRecord={setInspectedRecord}
-                  onResetFilters={() => setFilters(DEFAULT_FILTERS)}
-                />
-              )}
+                  {activeTab === 'overview' && (
+                    <OverviewView
+                      stats={overviewStats}
+                      dashboardOperators={workbook.dashboardOperators}
+                      filters={filters}
+                      onUpdateFilters={setFilters}
+                      onJumpToMaster={() => setActiveTab('master')}
+                      onJumpToOperatorQueue={handleJumpToOperatorQueue}
+                    />
+                  )}
 
-              {activeTab === 'operators' && (
-                <OperatorQueuesView
-                  operatorQueues={workbook.operatorQueues}
-                  masterRecords={workbook.masterRecords}
-                  dashboardOperators={workbook.dashboardOperators}
-                  selectedOperator={selectedOperatorQueue}
-                  selectedWeek={filters.week}
-                  onSelectOperator={setSelectedOperatorQueue}
-                  onSelectRecord={setInspectedRecord}
-                />
-              )}
+                  {activeTab === 'master' && (
+                    <MasterTrackerView
+                      records={filteredRecords}
+                      selectedWeek={filters.week}
+                      onSelectRecord={setInspectedRecord}
+                      onResetFilters={() => setFilters(DEFAULT_FILTERS)}
+                    />
+                  )}
 
-              {activeTab === 'billing' && (
-                <BillingExceptionsView
-                  records={filteredRecords}
-                  stats={overviewStats}
-                  selectedWeek={filters.week}
-                  onSelectRecord={setInspectedRecord}
-                />
-              )}
+                  {activeTab === 'operators' && (
+                    <OperatorQueuesView
+                      operatorQueues={workbook.operatorQueues}
+                      masterRecords={workbook.masterRecords}
+                      dashboardOperators={workbook.dashboardOperators}
+                      selectedOperator={selectedOperatorQueue}
+                      selectedWeek={filters.week}
+                      onSelectOperator={setSelectedOperatorQueue}
+                      onSelectRecord={setInspectedRecord}
+                    />
+                  )}
 
-              {activeTab === 'dth' && (
-                <DthSonyView
-                  dthLogs={workbook.dthLogs}
-                  sonyDates={workbook.sonyDates}
-                  sonyActivity={workbook.sonyActivity}
-                  selectedWeek={filters.week}
-                />
+                  {activeTab === 'billing' && (
+                    <BillingExceptionsView
+                      records={filteredRecords}
+                      stats={overviewStats}
+                      selectedWeek={filters.week}
+                      onSelectRecord={setInspectedRecord}
+                    />
+                  )}
+
+                  {activeTab === 'dth' && (
+                    <DthSonyView
+                      dthLogs={workbook.dthLogs}
+                      sonyDates={workbook.sonyDates}
+                      sonyActivity={workbook.sonyActivity}
+                      selectedWeek={filters.week}
+                    />
+                  )}
+                </>
               )}
             </>
           )}

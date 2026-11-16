@@ -32,6 +32,8 @@ const MASTER_URL =
   '/assets/aistudio/Monthly_Video_Tracker_-October_2026_-_Landing-Master_feef473b.csv';
 const DASHBOARD_URL =
   '/assets/aistudio/Monthly_Video_Tracker_-October_2026_-_Landing-DASHBOARD_f9b862d6.csv';
+const NOVEMBER_DASHBOARD_URL =
+  '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing_acd1d4d5.csv';
 const DTH_URL =
   '/assets/aistudio/Monthly_Video_Tracker_-October_2026_-_Landing-DTH_58a7a7d5.csv';
 const SONY_URL =
@@ -480,9 +482,17 @@ async function fetchCsvText(url: string): Promise<string> {
 export async function loadDefaultWorkbook(): Promise<WorkbookData> {
   const operatorEntries = Object.entries(OPERATOR_SHEETS);
 
-  const [masterText, dashboardText, dthText, sonyText, ...opTexts] = await Promise.all([
+  const [
+    masterText,
+    dashboardText,
+    novemberDashboardText,
+    dthText,
+    sonyText,
+    ...opTexts
+  ] = await Promise.all([
     fetchCsvText(MASTER_URL),
     fetchCsvText(DASHBOARD_URL),
+    fetchCsvText(NOVEMBER_DASHBOARD_URL),
     fetchCsvText(DTH_URL),
     fetchCsvText(SONY_URL),
     ...operatorEntries.map(([, url]) => fetchCsvText(url)),
@@ -490,6 +500,10 @@ export async function loadDefaultWorkbook(): Promise<WorkbookData> {
 
   const masterParsed = parseMasterGrid(parseCsvRows(masterText));
   const dashboardParsed = parseDashboardGrid(parseCsvRows(dashboardText));
+  const novRows = parseCsvRows(novemberDashboardText);
+  const novParsed = parseDashboardGrid(novRows);
+  const novWeekHint = cleanStr(novRows[2]?.[37]) || 'W3';
+
   const dthLogs = parseDthGrid(parseCsvRows(dthText));
   const sonyParsed = parseSonyGrid(parseCsvRows(sonyText));
 
@@ -499,13 +513,22 @@ export async function loadDefaultWorkbook(): Promise<WorkbookData> {
   });
 
   return {
-    sourceName: 'Monthly Video Tracker - October 2026 (Sep 28 – Nov 1)',
-    periodLabel: 'Weeks 40–44 · Sep 28 – Nov 1, 2026',
+    sourceName: 'Monthly Video Tracker - Oct & Nov 2026',
+    periodLabel: 'Oct 2026 Full · Nov 2026 (W1–W3)',
     loadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     dateHeaders: masterParsed.dateHeaders,
     masterRecords: masterParsed.records,
     dashboardOperators: dashboardParsed.operators,
     dashboardTotals: dashboardParsed.totals,
+    novemberDashboard: novParsed.totals
+      ? {
+          sourceName: 'Monthly Video Tracker - November 2026 - Landing',
+          periodLabel: 'November 2026 · W1–W3 Active',
+          activeWeekHint: novWeekHint,
+          operators: novParsed.operators,
+          totals: novParsed.totals,
+        }
+      : null,
     dthLogs,
     sonyDates: sonyParsed.dates,
     sonyActivity: sonyParsed.rows,
@@ -520,22 +543,48 @@ export async function parseUploadedWorkbook(file: File): Promise<WorkbookData> {
     const text = await file.text();
     const rows = parseCsvRows(text);
     const masterParsed = parseMasterGrid(rows);
-    if (masterParsed.records.length === 0) {
-      throw new Error('No valid Master network rows were found in the uploaded CSV.');
+    if (masterParsed.records.length > 0) {
+      return {
+        sourceName: file.name,
+        periodLabel: 'Uploaded CSV Master Sheet',
+        loadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        dateHeaders: masterParsed.dateHeaders,
+        masterRecords: masterParsed.records,
+        dashboardOperators: [],
+        dashboardTotals: null,
+        novemberDashboard: null,
+        dthLogs: [],
+        sonyDates: [],
+        sonyActivity: [],
+        operatorQueues: {},
+      };
     }
-    return {
-      sourceName: file.name,
-      periodLabel: 'Uploaded CSV Master Sheet',
-      loadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      dateHeaders: masterParsed.dateHeaders,
-      masterRecords: masterParsed.records,
-      dashboardOperators: [],
-      dashboardTotals: null,
-      dthLogs: [],
-      sonyDates: [],
-      sonyActivity: [],
-      operatorQueues: {},
-    };
+
+    const dashParsed = parseDashboardGrid(rows);
+    if (dashParsed.totals && dashParsed.operators.length > 0) {
+      return {
+        sourceName: file.name,
+        periodLabel: 'Uploaded Dashboard Summary CSV',
+        loadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        dateHeaders: [],
+        masterRecords: [],
+        dashboardOperators: dashParsed.operators,
+        dashboardTotals: dashParsed.totals,
+        novemberDashboard: {
+          sourceName: file.name,
+          periodLabel: 'Uploaded Dashboard Summary CSV',
+          activeWeekHint: cleanStr(rows[2]?.[37]) || 'W5',
+          operators: dashParsed.operators,
+          totals: dashParsed.totals,
+        },
+        dthLogs: [],
+        sonyDates: [],
+        sonyActivity: [],
+        operatorQueues: {},
+      };
+    }
+
+    throw new Error('No valid Master network rows or Dashboard summary rows were found in the uploaded CSV.');
   }
 
   const buffer = await file.arrayBuffer();
@@ -596,6 +645,7 @@ export async function parseUploadedWorkbook(file: File): Promise<WorkbookData> {
     masterRecords: masterParsed.records,
     dashboardOperators: dashParsed.operators,
     dashboardTotals: dashParsed.totals,
+    novemberDashboard: null,
     dthLogs,
     sonyDates: sonyParsed.dates,
     sonyActivity: sonyParsed.rows,

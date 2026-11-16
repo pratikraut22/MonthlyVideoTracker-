@@ -551,3 +551,122 @@ export function exportRecordsToCsv(
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+export function exportDashboardSnapshotToCsv(
+  snapshot: {
+    operators: Array<{
+      markets: string;
+      operationName: string;
+      allTotal: number;
+      allOnline: number;
+      allOffline: number;
+      allWeeks: number[];
+      catATotal: number;
+      catAOnline: number;
+      catAOffline: number;
+      billingAchieveAll: number;
+      billingAchieveA: number;
+      billingAchieveB: number;
+      billingAchieveOthers: number;
+      billingPendingAll: number;
+      billingPendingA: number;
+      billingPendingBO: number;
+      videoTotalNetworks: number;
+      videoWeeks: number[];
+      pendingCurrentNetwork: number;
+      barcTotal: number;
+      barcOnline: number;
+      barcOffline: number;
+    }>;
+  },
+  filename = 'november-2026-dashboard-summary.csv',
+): void {
+  const headers = [
+    'Markets',
+    'Operation Name',
+    'All Total',
+    'All Online',
+    'All Offline',
+    'W1 Box',
+    'W2 Box',
+    'W3 Box',
+    'W4 Box',
+    'W5 Box',
+    'Cat A Total',
+    'Cat A Online',
+    'Cat A Offline',
+    'Billing Done All',
+    'Billing Done Cat A',
+    'Billing Done Cat B',
+    'Billing Done Others',
+    'Billing Pending All',
+    'Billing Pending Cat A',
+    'Billing Pending Cat B/Others',
+    'Video Roster',
+    'W1 Videos',
+    'W2 Videos',
+    'W3 Videos',
+    'W4 Videos',
+    'W5 Videos',
+    'Pending Current Network',
+    'BARC Total',
+    'BARC Online',
+    'BARC Offline',
+  ];
+
+  const escapeCell = (v: unknown): string => {
+    const s = String(v ?? '');
+    if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+      return `"${s.replace(/"/g, '""')}"`;
+    }
+    return s;
+  };
+
+  const lines = [headers.map(escapeCell).join(',')];
+  for (const op of snapshot.operators) {
+    const row = [
+      op.markets,
+      op.operationName,
+      op.allTotal,
+      op.allOnline,
+      op.allOffline,
+      op.allWeeks[0] ?? 0,
+      op.allWeeks[1] ?? 0,
+      op.allWeeks[2] ?? 0,
+      op.allWeeks[3] ?? 0,
+      op.allWeeks[4] ?? 0,
+      op.catATotal,
+      op.catAOnline,
+      op.catAOffline,
+      op.billingAchieveAll,
+      op.billingAchieveA,
+      op.billingAchieveB,
+      op.billingAchieveOthers,
+      op.billingPendingAll,
+      op.billingPendingA,
+      op.billingPendingBO,
+      op.videoTotalNetworks,
+      op.videoWeeks[0] ?? 0,
+      op.videoWeeks[1] ?? 0,
+      op.videoWeeks[2] ?? 0,
+      op.videoWeeks[3] ?? 0,
+      op.videoWeeks[4] ?? 0,
+      op.pendingCurrentNetwork,
+      op.barcTotal,
+      op.barcOnline,
+      op.barcOffline,
+    ];
+    lines.push(row.map(escapeCell).join(','));
+  }
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+

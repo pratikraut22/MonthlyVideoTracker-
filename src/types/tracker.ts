@@ -112,14 +112,12 @@ export interface OperatorPendingRow {
   operationName: string;
 }
 
-export interface WorkbookData {
+export interface DashboardDataSnapshot {
   sourceName: string;
   periodLabel: string;
-  loadedAt: string;
-  dateHeaders: { date: string; dayName: string }[];
-  masterRecords: MasterNetworkRecord[];
-  dashboardOperators: DashboardOperatorSummary[];
-  dashboardTotals: {
+  activeWeekHint: string;
+  operators: DashboardOperatorSummary[];
+  totals: {
     allAchieve: number;
     allOnline: number;
     allOffline: number;
@@ -143,11 +141,24 @@ export interface WorkbookData {
     barcOffline: number;
     barcWeeks: number[];
   } | null;
+}
+
+export interface WorkbookData {
+  sourceName: string;
+  periodLabel: string;
+  loadedAt: string;
+  dateHeaders: { date: string; dayName: string }[];
+  masterRecords: MasterNetworkRecord[];
+  dashboardOperators: DashboardOperatorSummary[];
+  dashboardTotals: DashboardDataSnapshot['totals'];
+  novemberDashboard: DashboardDataSnapshot | null;
   dthLogs: DthLogEntry[];
   sonyDates: string[];
   sonyActivity: SonyActivityRow[];
   operatorQueues: Record<string, OperatorPendingRow[]>;
 }
+
+export type MonthScope = 'oct2026' | 'nov2026';
 
 export type WeekFilter = 'ALL' | 40 | 41 | 42 | 43 | 44;
 
