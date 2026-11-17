@@ -4,6 +4,8 @@ import type {
   DashboardOperatorSummary,
   DthLogEntry,
   MasterNetworkRecord,
+  MonthScope,
+  MonthWorkbook,
   NetworkCategory,
   NetworkType,
   OperatorPendingRow,
@@ -12,7 +14,7 @@ import type {
   WorkbookData,
 } from '../types/tracker';
 
-const OPERATOR_SHEETS: Record<string, string> = {
+const OCT_OPERATOR_SHEETS: Record<string, string> = {
   ARBIND: '/assets/aistudio/Monthly_Video_Tracker_-October_2026_-_Landing-ARBIND_36aa5e7e.csv',
   CHIRAG: '/assets/aistudio/Monthly_Video_Tracker_-October_2026_-_Landing-CHIRAG_44676c39.csv',
   MUKESH: '/assets/aistudio/Monthly_Video_Tracker_-October_2026_-_Landing-MUKESH_55a3dcf9.csv',
@@ -28,16 +30,54 @@ const OPERATOR_SHEETS: Record<string, string> = {
   VINIT: '/assets/aistudio/Monthly_Video_Tracker_-October_2026_-_Landing-VINIT_93867cf8.csv',
 };
 
-const MASTER_URL =
+const NOV_OPERATOR_SHEETS: Record<string, string> = {
+  ARBIND: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-ARBIND_44c8fd42.csv',
+  CHIRAG: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-CHIRAG_08074ecc.csv',
+  MUKESH: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-MUKESH_e4af53a0.csv',
+  NARENDRA: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-NARENDRA_642a37b5.csv',
+  NITIN: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-NITIN_721fc065.csv',
+  SAI: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SAI_7965ebc0.csv',
+  SAMEER: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SAMEER_08c1ad15.csv',
+  SANDEEP: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SANDEEP_2bdd616d.csv',
+  SHIVA: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SHIVA_320cbabf.csv',
+  STALIN: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-STALIN_d45b23ee.csv',
+  SUNIL: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SUNIL_c894d7f3.csv',
+  VARUN: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-VARUN_b8f1beb5.csv',
+  VINIT: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-VINIT_8a8f159b.csv',
+};
+
+const OCT_MASTER_URL =
   '/assets/aistudio/Monthly_Video_Tracker_-October_2026_-_Landing-Master_feef473b.csv';
-const DASHBOARD_URL =
+const OCT_DASHBOARD_URL =
   '/assets/aistudio/Monthly_Video_Tracker_-October_2026_-_Landing-DASHBOARD_f9b862d6.csv';
-const NOVEMBER_DASHBOARD_URL =
-  '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing_acd1d4d5.csv';
-const DTH_URL =
+const OCT_DTH_URL =
   '/assets/aistudio/Monthly_Video_Tracker_-October_2026_-_Landing-DTH_58a7a7d5.csv';
-const SONY_URL =
+const OCT_SONY_URL =
   '/assets/aistudio/Monthly_Video_Tracker_-October_2026_-_Landing-SONY_ACTIVITY_2e80cf36.csv';
+
+const NOV_MASTER_URL =
+  '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-Master_d53e570d.csv';
+const NOV_DASHBOARD_URL =
+  '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-DASHBOARD_9ab0661e.csv';
+const NOV_DTH_URL =
+  '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-DTH_2cca53b3.csv';
+const NOV_SONY_URL =
+  '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SONY_ACTIVITY_2e80cf36.csv';
+
+const MONTH_NAMES = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 
 export function parseCsvRows(text: string): string[][] {
   const rows: string[][] = [];
@@ -115,20 +155,60 @@ function normalizeProgram(val: string): WeekUpdateProgram {
   return 'OTHERS';
 }
 
-const WEEK_RANGES = [
-  'Sep 28 – Oct 4',
-  'Oct 5 – Oct 11',
-  'Oct 12 – Oct 18',
-  'Oct 19 – Oct 25',
-  'Oct 26 – Nov 1',
-];
+function formatShortDate(dateStr: string): string {
+  const parts = dateStr.trim().split('/');
+  if (parts.length !== 3) return dateStr.trim();
+  const p0 = Number(parts[0]);
+  const p1 = Number(parts[1]);
+  if (!Number.isFinite(p0) || !Number.isFinite(p1)) return dateStr.trim();
+  const month = p0 > 12 ? p1 : p0;
+  const day = p0 > 12 ? p0 : p1;
+  const monthName = MONTH_NAMES[month - 1];
+  return monthName ? `${monthName} ${day}` : dateStr.trim();
+}
+
+function detectWeekStartNumber(
+  groupRow: string[],
+  dateHeaders: { date: string; dayName: string }[],
+): number {
+  const col46 = cleanStr(groupRow[46]);
+  const match = col46.match(/(\d+)/);
+  if (match) {
+    const num = Number(match[1]);
+    if (Number.isFinite(num) && num >= 1 && num <= 53) {
+      return num;
+    }
+  }
+  const firstDate = dateHeaders[0]?.date ?? '';
+  if (firstDate.startsWith('11/')) return 45;
+  return 40;
+}
+
+function buildRangeLabel(
+  dateHeaders: { date: string; dayName: string }[],
+  idx: number,
+  fallbackWeekNum: number,
+): string {
+  const slice = dateHeaders.slice(idx * 7, idx * 7 + 7);
+  if (slice.length >= 2) {
+    return `${formatShortDate(slice[0].date)} – ${formatShortDate(slice[slice.length - 1].date)}`;
+  }
+  return `Week ${fallbackWeekNum}`;
+}
 
 export function parseMasterGrid(rows: string[][]): {
   records: MasterNetworkRecord[];
   dateHeaders: { date: string; dayName: string }[];
+  weekStartNumber: number;
+  cycleRangeLabel: string;
 } {
   if (rows.length < 3) {
-    return { records: [], dateHeaders: [] };
+    return {
+      records: [],
+      dateHeaders: [],
+      weekStartNumber: 40,
+      cycleRangeLabel: '',
+    };
   }
 
   let headerRowIdx = 1;
@@ -154,6 +234,15 @@ export function parseMasterGrid(rows: string[][]): {
       });
     }
   }
+
+  const weekStartNumber = detectWeekStartNumber(groupRow, dateHeaders);
+  const weekRanges = [0, 1, 2, 3, 4].map((idx) =>
+    buildRangeLabel(dateHeaders, idx, weekStartNumber + idx),
+  );
+  const cycleRangeLabel =
+    dateHeaders.length >= 2
+      ? `${formatShortDate(dateHeaders[0].date)} – ${formatShortDate(dateHeaders[dateHeaders.length - 1].date)}, 2026 (${dateHeaders.length} days)`
+      : '';
 
   const records: MasterNetworkRecord[] = [];
   const weekStartCols = [46, 53, 60, 67, 74];
@@ -193,9 +282,9 @@ export function parseMasterGrid(rows: string[][]): {
       const weekRemark = cleanStr(row[99 + idx]);
 
       return {
-        weekNumber: 40 + idx,
+        weekNumber: weekStartNumber + idx,
         label: `W${idx + 1}`,
-        rangeLabel: WEEK_RANGES[idx] ?? `Week ${40 + idx}`,
+        rangeLabel: weekRanges[idx] ?? `Week ${weekStartNumber + idx}`,
         boxCount,
         video1,
         video2,
@@ -225,7 +314,8 @@ export function parseMasterGrid(rows: string[][]): {
       weekUpdate: normalizeProgram(cleanStr(row[8])),
       machineNo: cleanStr(row[9]),
       operationName: cleanStr(row[10]).toUpperCase(),
-      finalOperationName: cleanStr(row[87]).toUpperCase() || cleanStr(row[10]).toUpperCase(),
+      finalOperationName:
+        cleanStr(row[87]).toUpperCase() || cleanStr(row[10]).toUpperCase(),
       daily,
       totalOnDays,
       weeks,
@@ -244,12 +334,12 @@ export function parseMasterGrid(rows: string[][]): {
     });
   }
 
-  return { records, dateHeaders };
+  return { records, dateHeaders, weekStartNumber, cycleRangeLabel };
 }
 
 export function parseDashboardGrid(rows: string[][]): {
   operators: DashboardOperatorSummary[];
-  totals: WorkbookData['dashboardTotals'];
+  totals: MonthWorkbook['dashboardTotals'];
 } {
   const operatorMap = new Map<string, DashboardOperatorSummary>();
 
@@ -290,7 +380,7 @@ export function parseDashboardGrid(rows: string[][]): {
     return created;
   };
 
-  let totals: WorkbookData['dashboardTotals'] = null;
+  let totals: MonthWorkbook['dashboardTotals'] = null;
 
   for (let r = 4; r <= 26 && r < rows.length; r++) {
     const row = rows[r];
@@ -395,13 +485,16 @@ export function parseDthGrid(rows: string[][]): DthLogEntry[] {
     const parsedNum = Number(rawAmount.replace(/,/g, ''));
     const amount = rawAmount && Number.isFinite(parsedNum) ? parsedNum : null;
 
+    const rawCount = cleanStr(row[4]);
+    const count = rawCount && rawCount !== '-' ? parseNum(rawCount) : 0;
+
     entries.push({
       id: r,
       date,
       networkName,
       timing: cleanStr(row[2]) || '-',
       operator: cleanStr(row[3]).toUpperCase(),
-      count: parseNum(row[4]) || 1,
+      count,
       amount,
       rawAmount: rawAmount || '-',
     });
@@ -450,23 +543,46 @@ export function parseSonyGrid(rows: string[][]): {
 }
 
 export function parseOperatorPendingGrid(rows: string[][]): OperatorPendingRow[] {
+  if (rows.length < 2) return [];
+  const firstColHeader = cleanStr(rows[0]?.[0]).toUpperCase();
+  const hasNoSrCol = firstColHeader === 'STATE';
+
   const items: OperatorPendingRow[] = [];
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
     if (!row) continue;
-    const networkName = cleanStr(row[4]);
-    const code = cleanStr(row[3]);
-    if (!networkName && !code) continue;
 
-    items.push({
-      srNo: parseNum(row[0]) || items.length + 1,
-      state: cleanStr(row[1]).toUpperCase(),
-      city: cleanStr(row[2]),
-      code,
-      networkName,
-      weekUpdate: cleanStr(row[5]).toUpperCase(),
-      operationName: cleanStr(row[6]).toUpperCase(),
-    });
+    if (hasNoSrCol) {
+      const state = cleanStr(row[0]).toUpperCase();
+      const city = cleanStr(row[1]);
+      const code = cleanStr(row[2]);
+      const networkName = cleanStr(row[3]);
+      if (!networkName && !code) continue;
+
+      items.push({
+        srNo: items.length + 1,
+        state,
+        city,
+        code,
+        networkName,
+        weekUpdate: cleanStr(row[4]).toUpperCase(),
+        operationName: cleanStr(row[5]).toUpperCase(),
+      });
+    } else {
+      const networkName = cleanStr(row[4]);
+      const code = cleanStr(row[3]);
+      if (!networkName && !code) continue;
+
+      items.push({
+        srNo: parseNum(row[0]) || items.length + 1,
+        state: cleanStr(row[1]).toUpperCase(),
+        city: cleanStr(row[2]),
+        code,
+        networkName,
+        weekUpdate: cleanStr(row[5]).toUpperCase(),
+        operationName: cleanStr(row[6]).toUpperCase(),
+      });
+    }
   }
   return items;
 }
@@ -479,31 +595,31 @@ async function fetchCsvText(url: string): Promise<string> {
   return res.text();
 }
 
-export async function loadDefaultWorkbook(): Promise<WorkbookData> {
-  const operatorEntries = Object.entries(OPERATOR_SHEETS);
+async function loadMonthBundle(params: {
+  monthScope: MonthScope;
+  sourceName: string;
+  periodLabel: string;
+  masterUrl: string;
+  dashboardUrl: string;
+  dthUrl: string;
+  sonyUrl: string;
+  operatorSheets: Record<string, string>;
+}): Promise<MonthWorkbook> {
+  const operatorEntries = Object.entries(params.operatorSheets);
 
-  const [
-    masterText,
-    dashboardText,
-    novemberDashboardText,
-    dthText,
-    sonyText,
-    ...opTexts
-  ] = await Promise.all([
-    fetchCsvText(MASTER_URL),
-    fetchCsvText(DASHBOARD_URL),
-    fetchCsvText(NOVEMBER_DASHBOARD_URL),
-    fetchCsvText(DTH_URL),
-    fetchCsvText(SONY_URL),
-    ...operatorEntries.map(([, url]) => fetchCsvText(url)),
-  ]);
+  const [masterText, dashboardText, dthText, sonyText, ...opTexts] =
+    await Promise.all([
+      fetchCsvText(params.masterUrl),
+      fetchCsvText(params.dashboardUrl),
+      fetchCsvText(params.dthUrl),
+      fetchCsvText(params.sonyUrl),
+      ...operatorEntries.map(([, url]) => fetchCsvText(url)),
+    ]);
 
   const masterParsed = parseMasterGrid(parseCsvRows(masterText));
-  const dashboardParsed = parseDashboardGrid(parseCsvRows(dashboardText));
-  const novRows = parseCsvRows(novemberDashboardText);
-  const novParsed = parseDashboardGrid(novRows);
-  const novWeekHint = cleanStr(novRows[2]?.[37]) || 'W3';
-
+  const dashRows = parseCsvRows(dashboardText);
+  const dashboardParsed = parseDashboardGrid(dashRows);
+  const activeWeekHint = cleanStr(dashRows[2]?.[37]) || 'W5';
   const dthLogs = parseDthGrid(parseCsvRows(dthText));
   const sonyParsed = parseSonyGrid(parseCsvRows(sonyText));
 
@@ -513,22 +629,16 @@ export async function loadDefaultWorkbook(): Promise<WorkbookData> {
   });
 
   return {
-    sourceName: 'Monthly Video Tracker - Oct & Nov 2026',
-    periodLabel: 'Oct 2026 Full · Nov 2026 (W1–W3)',
-    loadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    monthScope: params.monthScope,
+    sourceName: params.sourceName,
+    periodLabel: params.periodLabel,
+    activeWeekHint,
+    weekStartNumber: masterParsed.weekStartNumber,
+    cycleRangeLabel: masterParsed.cycleRangeLabel,
     dateHeaders: masterParsed.dateHeaders,
     masterRecords: masterParsed.records,
     dashboardOperators: dashboardParsed.operators,
     dashboardTotals: dashboardParsed.totals,
-    novemberDashboard: novParsed.totals
-      ? {
-          sourceName: 'Monthly Video Tracker - November 2026 - Landing',
-          periodLabel: 'November 2026 · W1–W3 Active',
-          activeWeekHint: novWeekHint,
-          operators: novParsed.operators,
-          totals: novParsed.totals,
-        }
-      : null,
     dthLogs,
     sonyDates: sonyParsed.dates,
     sonyActivity: sonyParsed.rows,
@@ -536,55 +646,100 @@ export async function loadDefaultWorkbook(): Promise<WorkbookData> {
   };
 }
 
+export async function loadDefaultWorkbook(): Promise<WorkbookData> {
+  const [oct2026, nov2026] = await Promise.all([
+    loadMonthBundle({
+      monthScope: 'oct2026',
+      sourceName: 'Monthly Video Tracker - October 2026 (19 sheets)',
+      periodLabel: 'Oct 2026 · Sep 28 – Nov 1 (WK40–WK44)',
+      masterUrl: OCT_MASTER_URL,
+      dashboardUrl: OCT_DASHBOARD_URL,
+      dthUrl: OCT_DTH_URL,
+      sonyUrl: OCT_SONY_URL,
+      operatorSheets: OCT_OPERATOR_SHEETS,
+    }),
+    loadMonthBundle({
+      monthScope: 'nov2026',
+      sourceName: 'Monthly Video Tracker - November 2026 (19 sheets)',
+      periodLabel: 'Nov 2026 · Nov 2 – Dec 6 (WK45–WK49)',
+      masterUrl: NOV_MASTER_URL,
+      dashboardUrl: NOV_DASHBOARD_URL,
+      dthUrl: NOV_DTH_URL,
+      sonyUrl: NOV_SONY_URL,
+      operatorSheets: NOV_OPERATOR_SHEETS,
+    }),
+  ]);
+
+  return {
+    loadedAt: new Date().toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+    }),
+    oct2026,
+    nov2026,
+    snapshotOnly: null,
+  };
+}
+
 export async function parseUploadedWorkbook(file: File): Promise<WorkbookData> {
   const lower = file.name.toLowerCase();
+  const loadedAt = new Date().toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
   if (lower.endsWith('.csv')) {
     const text = await file.text();
     const rows = parseCsvRows(text);
     const masterParsed = parseMasterGrid(rows);
     if (masterParsed.records.length > 0) {
-      return {
+      const detectedScope: MonthScope =
+        masterParsed.weekStartNumber >= 45 || lower.includes('nov')
+          ? 'nov2026'
+          : 'oct2026';
+      const monthWb: MonthWorkbook = {
+        monthScope: detectedScope,
         sourceName: file.name,
-        periodLabel: 'Uploaded CSV Master Sheet',
-        loadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        periodLabel: `Uploaded CSV · ${masterParsed.cycleRangeLabel || 'Master Sheet'}`,
+        activeWeekHint: detectedScope === 'nov2026' ? 'W3' : 'W5',
+        weekStartNumber: masterParsed.weekStartNumber,
+        cycleRangeLabel: masterParsed.cycleRangeLabel,
         dateHeaders: masterParsed.dateHeaders,
         masterRecords: masterParsed.records,
         dashboardOperators: [],
         dashboardTotals: null,
-        novemberDashboard: null,
         dthLogs: [],
         sonyDates: [],
         sonyActivity: [],
         operatorQueues: {},
+      };
+      return {
+        loadedAt,
+        oct2026: detectedScope === 'oct2026' ? monthWb : null,
+        nov2026: detectedScope === 'nov2026' ? monthWb : null,
+        snapshotOnly: null,
       };
     }
 
     const dashParsed = parseDashboardGrid(rows);
     if (dashParsed.totals && dashParsed.operators.length > 0) {
       return {
-        sourceName: file.name,
-        periodLabel: 'Uploaded Dashboard Summary CSV',
-        loadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        dateHeaders: [],
-        masterRecords: [],
-        dashboardOperators: dashParsed.operators,
-        dashboardTotals: dashParsed.totals,
-        novemberDashboard: {
+        loadedAt,
+        oct2026: null,
+        nov2026: null,
+        snapshotOnly: {
           sourceName: file.name,
           periodLabel: 'Uploaded Dashboard Summary CSV',
           activeWeekHint: cleanStr(rows[2]?.[37]) || 'W5',
           operators: dashParsed.operators,
           totals: dashParsed.totals,
         },
-        dthLogs: [],
-        sonyDates: [],
-        sonyActivity: [],
-        operatorQueues: {},
       };
     }
 
-    throw new Error('No valid Master network rows or Dashboard summary rows were found in the uploaded CSV.');
+    throw new Error(
+      'No valid Master network rows or Dashboard summary rows were found in the uploaded CSV.',
+    );
   }
 
   const buffer = await file.arrayBuffer();
@@ -611,13 +766,17 @@ export async function parseUploadedWorkbook(file: File): Promise<WorkbookData> {
   const masterParsed = parseMasterGrid(sheetToGrid(masterSheetName));
 
   if (masterParsed.records.length === 0) {
-    throw new Error(`Could not detect Master tracker rows in sheet "${masterSheetName}".`);
+    throw new Error(
+      `Could not detect Master tracker rows in sheet "${masterSheetName}".`,
+    );
   }
 
   const dashSheetName = findSheet(['dashboard']);
+  const dashRows = dashSheetName ? sheetToGrid(dashSheetName) : [];
   const dashParsed = dashSheetName
-    ? parseDashboardGrid(sheetToGrid(dashSheetName))
+    ? parseDashboardGrid(dashRows)
     : { operators: [], totals: null };
+  const activeWeekHint = cleanStr(dashRows[2]?.[37]) || 'W5';
 
   const dthSheetName = findSheet(['dth']);
   const dthLogs = dthSheetName ? parseDthGrid(sheetToGrid(dthSheetName)) : [];
@@ -628,7 +787,7 @@ export async function parseUploadedWorkbook(file: File): Promise<WorkbookData> {
     : { dates: [], rows: [] };
 
   const operatorQueues: Record<string, OperatorPendingRow[]> = {};
-  for (const opName of Object.keys(OPERATOR_SHEETS)) {
+  for (const opName of Object.keys(NOV_OPERATOR_SHEETS)) {
     const opSheet = workbook.SheetNames.find(
       (s) => s.trim().toUpperCase() === opName,
     );
@@ -637,18 +796,32 @@ export async function parseUploadedWorkbook(file: File): Promise<WorkbookData> {
     }
   }
 
-  return {
+  const detectedScope: MonthScope =
+    masterParsed.weekStartNumber >= 45 || lower.includes('nov')
+      ? 'nov2026'
+      : 'oct2026';
+
+  const monthWb: MonthWorkbook = {
+    monthScope: detectedScope,
     sourceName: file.name,
     periodLabel: `Workbook (${workbook.SheetNames.length} sheets)`,
-    loadedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    activeWeekHint,
+    weekStartNumber: masterParsed.weekStartNumber,
+    cycleRangeLabel: masterParsed.cycleRangeLabel,
     dateHeaders: masterParsed.dateHeaders,
     masterRecords: masterParsed.records,
     dashboardOperators: dashParsed.operators,
     dashboardTotals: dashParsed.totals,
-    novemberDashboard: null,
     dthLogs,
     sonyDates: sonyParsed.dates,
     sonyActivity: sonyParsed.rows,
     operatorQueues,
+  };
+
+  return {
+    loadedAt,
+    oct2026: detectedScope === 'oct2026' ? monthWb : null,
+    nov2026: detectedScope === 'nov2026' ? monthWb : null,
+    snapshotOnly: null,
   };
 }

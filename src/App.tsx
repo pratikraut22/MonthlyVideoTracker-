@@ -31,6 +31,7 @@ import type {
   ActiveTab,
   MasterNetworkRecord,
   MonthScope,
+  MonthWorkbook,
   TrackerFilters,
   WorkbookData,
 } from './types/tracker';
@@ -77,8 +78,10 @@ export default function App() {
     try {
       const data = await loadDefaultWorkbook();
       setWorkbook(data);
-      setMonthScope(data.novemberDashboard ? 'nov2026' : 'oct2026');
+      setMonthScope(data.nov2026 ? 'nov2026' : 'oct2026');
       setIsCustomUpload(false);
+      setFilters(DEFAULT_FILTERS);
+      setInspectedRecord(null);
     } catch (err) {
       setError(
         err instanceof Error
@@ -101,15 +104,10 @@ export default function App() {
     try {
       const parsed = await parseUploadedWorkbook(file);
       setWorkbook(parsed);
-      setMonthScope(
-        parsed.masterRecords.length > 0
-          ? 'oct2026'
-          : parsed.novemberDashboard
-            ? 'nov2026'
-            : 'oct2026',
-      );
+      setMonthScope(parsed.nov2026 ? 'nov2026' : 'oct2026');
       setIsCustomUpload(true);
       setFilters(DEFAULT_FILTERS);
+      setInspectedRecord(null);
     } catch (err) {
       setUploadError(
         err instanceof Error
@@ -122,30 +120,55 @@ export default function App() {
     }
   };
 
+  const activeMonthWorkbook: MonthWorkbook | null = useMemo(() => {
+    if (!workbook) return null;
+    if (monthScope === 'nov2026') {
+      return workbook.nov2026 ?? workbook.oct2026;
+    }
+    return workbook.oct2026 ?? workbook.nov2026;
+  }, [workbook, monthScope]);
+
+  const effectiveMonthScope: MonthScope =
+    activeMonthWorkbook?.monthScope ?? monthScope;
+
+  const comparisonTotals = useMemo(() => {
+    if (!workbook || !activeMonthWorkbook) return null;
+    const other =
+      activeMonthWorkbook.monthScope === 'nov2026'
+        ? workbook.oct2026
+        : workbook.nov2026;
+    return other?.dashboardTotals ?? null;
+  }, [workbook, activeMonthWorkbook]);
+
   const operators = useMemo(() => {
-    if (!workbook) return [];
+    if (!activeMonthWorkbook) return [];
     return Array.from(
       new Set(
-        workbook.masterRecords.map((r) => r.operationName).filter(Boolean),
+        activeMonthWorkbook.masterRecords
+          .map((r) => r.operationName)
+          .filter(Boolean),
       ),
     ).sort();
-  }, [workbook]);
+  }, [activeMonthWorkbook]);
 
   const states = useMemo(() => {
-    if (!workbook) return [];
+    if (!activeMonthWorkbook) return [];
     return Array.from(
-      new Set(workbook.masterRecords.map((r) => r.state).filter(Boolean)),
+      new Set(
+        activeMonthWorkbook.masterRecords.map((r) => r.state).filter(Boolean),
+      ),
     ).sort();
-  }, [workbook]);
+  }, [activeMonthWorkbook]);
 
   const filteredRecords = useMemo(() => {
-    if (!workbook) return [];
-    return filterMasterRecords(workbook.masterRecords, filters);
-  }, [workbook, filters]);
+    if (!activeMonthWorkbook) return [];
+    return filterMasterRecords(activeMonthWorkbook.masterRecords, filters);
+  }, [activeMonthWorkbook, filters]);
 
   const overviewStats = useMemo(
-    () => computeOverviewStats(filteredRecords, filters.week),
-    [filteredRecords, filters.week],
+    () =>
+      computeOverviewStats(filteredRecords, filters.week, effectiveMonthScope),
+    [filteredRecords, filters.week, effectiveMonthScope],
   );
 
   const activeNavMeta =
@@ -155,6 +178,8 @@ export default function App() {
     setSelectedOperatorQueue(op);
     setActiveTab('operators');
   };
+
+  const snapshotOnly = workbook?.snapshotOnly ?? null;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex">
@@ -234,22 +259,40 @@ export default function App() {
           <div className="space-y-1">
             <div className="flex items-center gap-1.5 font-medium text-slate-700">
               <FileSpreadsheet className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span className="truncate">Active Workbook</span>
+              <span className="truncate">Active Workbooks</span>
             </div>
             <div className="text-[11px] text-slate-500 leading-relaxed">
-              {workbook ? workbook.periodLabel : 'Loading workbook...'}
+              {activeMonthWorkbook
+                ? activeMonthWorkbook.periodLabel
+                : snapshotOnly
+                  ? snapshotOnly.periodLabel
+                  : 'Loading workbooks...'}
             </div>
             {workbook && (
               <div className="text-[11px] font-mono tabular-nums text-slate-500 space-y-0.5">
-                {workbook.novemberDashboard && (
-                  <div className="text-emerald-700 font-medium">
-                    Nov 2026: {workbook.novemberDashboard.totals?.allAchieve ?? 0} achieve ·{' '}
-                    {workbook.novemberDashboard.activeWeekHint}
+                {workbook.nov2026 && (
+                  <div
+                    className={
+                      effectiveMonthScope === 'nov2026'
+                        ? 'text-emerald-700 font-medium'
+                        : 'text-slate-500'
+                    }
+                  >
+                    Nov 2026: {workbook.nov2026.masterRecords.length} rows ·{' '}
+                    {workbook.nov2026.dthLogs.length} DTH ·{' '}
+                    {workbook.nov2026.activeWeekHint}
                   </div>
                 )}
-                {workbook.masterRecords.length > 0 && (
-                  <div>
-                    Oct 2026: {workbook.masterRecords.length} networks · {workbook.dthLogs.length} DTH
+                {workbook.oct2026 && (
+                  <div
+                    className={
+                      effectiveMonthScope === 'oct2026'
+                        ? 'text-emerald-700 font-medium'
+                        : 'text-slate-500'
+                    }
+                  >
+                    Oct 2026: {workbook.oct2026.masterRecords.length} rows ·{' '}
+                    {workbook.oct2026.dthLogs.length} DTH
                   </div>
                 )}
               </div>
@@ -272,7 +315,7 @@ export default function App() {
                 className="w-full h-8 px-2.5 inline-flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-blue-700 font-medium rounded border border-slate-200 whitespace-nowrap shrink-0 cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                Restore Default Workbook
+                Restore Default Workbooks
               </button>
             )}
           </div>
@@ -301,7 +344,7 @@ export default function App() {
               {workbook && (
                 <span className="hidden md:inline text-xs font-mono text-slate-500">
                   ·{' '}
-                  {monthScope === 'nov2026' && workbook.novemberDashboard
+                  {effectiveMonthScope === 'nov2026'
                     ? 'November 2026'
                     : 'October 2026'}
                 </span>
@@ -322,16 +365,16 @@ export default function App() {
               type="button"
               disabled={
                 !workbook ||
-                (monthScope === 'nov2026' && workbook.novemberDashboard
-                  ? workbook.novemberDashboard.operators.length === 0
+                (snapshotOnly
+                  ? snapshotOnly.operators.length === 0
                   : filteredRecords.length === 0)
               }
               onClick={() => {
                 if (!workbook) return;
-                if (monthScope === 'nov2026' && workbook.novemberDashboard) {
-                  exportDashboardSnapshotToCsv(workbook.novemberDashboard);
+                if (snapshotOnly) {
+                  exportDashboardSnapshotToCsv(snapshotOnly);
                 } else {
-                  exportRecordsToCsv(filteredRecords);
+                  exportRecordsToCsv(filteredRecords, effectiveMonthScope);
                 }
               }}
               className="h-8 px-3 inline-flex items-center gap-1.5 text-xs font-medium text-white bg-slate-900 rounded hover:bg-slate-800 disabled:opacity-40 whitespace-nowrap shrink-0 cursor-pointer"
@@ -371,7 +414,7 @@ export default function App() {
               </div>
               <div className="h-72 bg-white border border-slate-200 rounded-lg" />
             </div>
-          ) : error || !workbook ? (
+          ) : error || (!activeMonthWorkbook && !snapshotOnly) ? (
             <div className="bg-white border border-slate-200 rounded-lg p-10 text-center space-y-3">
               <AlertCircle className="w-8 h-8 text-red-600 mx-auto" />
               <h2 className="text-base font-semibold text-slate-900">
@@ -388,151 +431,121 @@ export default function App() {
                 Retry Loading Workbook
               </button>
             </div>
-          ) : (
+          ) : snapshotOnly ? (
             <>
               <WeekSelectorBar
                 selectedWeek={filters.week}
                 onSelectWeek={(week) => setFilters({ ...filters, week })}
-                monthScope={monthScope}
+                monthScope="nov2026"
+                onSelectMonthScope={() => {}}
+                hasNovember={true}
+                hasOctober={false}
+                novActiveWeekHint={snapshotOnly.activeWeekHint}
+              />
+              <DashboardSnapshotView
+                snapshot={snapshotOnly}
+                baselineTotals={null}
+                baselineOperators={[]}
+                selectedWeek={filters.week}
+                onSelectWeek={(week) => setFilters({ ...filters, week })}
+                sectionFocus={
+                  activeTab === 'operators' || activeTab === 'billing'
+                    ? activeTab
+                    : 'overview'
+                }
+              />
+            </>
+          ) : activeMonthWorkbook ? (
+            <>
+              <WeekSelectorBar
+                selectedWeek={filters.week}
+                onSelectWeek={(week) => setFilters({ ...filters, week })}
+                monthScope={effectiveMonthScope}
                 onSelectMonthScope={(nextScope) => {
                   setMonthScope(nextScope);
-                  setFilters({ ...filters, week: 'ALL' });
+                  setFilters({ ...filters, week: 'ALL', state: 'ALL' });
+                  setInspectedRecord(null);
                 }}
-                hasNovember={Boolean(workbook.novemberDashboard)}
-                hasMaster={workbook.masterRecords.length > 0}
-                novActiveWeekHint={workbook.novemberDashboard?.activeWeekHint ?? 'W3'}
-                masterCount={workbook.masterRecords.length}
+                hasNovember={Boolean(workbook?.nov2026)}
+                hasOctober={Boolean(workbook?.oct2026)}
+                novCount={workbook?.nov2026?.masterRecords.length ?? 0}
+                octCount={workbook?.oct2026?.masterRecords.length ?? 0}
+                novActiveWeekHint={workbook?.nov2026?.activeWeekHint ?? 'W3'}
+                cycleRangeLabel={activeMonthWorkbook.cycleRangeLabel}
               />
 
-              {monthScope === 'nov2026' && workbook.novemberDashboard ? (
-                <>
-                  {(activeTab === 'overview' ||
-                    activeTab === 'operators' ||
-                    activeTab === 'billing') && (
-                    <DashboardSnapshotView
-                      snapshot={workbook.novemberDashboard}
-                      baselineTotals={workbook.dashboardTotals}
-                      baselineOperators={workbook.dashboardOperators}
-                      selectedWeek={filters.week}
-                      onSelectWeek={(week) => setFilters({ ...filters, week })}
-                      onSwitchToOct={
-                        workbook.masterRecords.length > 0
-                          ? () => setMonthScope('oct2026')
-                          : undefined
-                      }
-                      sectionFocus={activeTab}
-                    />
-                  )}
+              {(activeTab === 'overview' ||
+                activeTab === 'master' ||
+                activeTab === 'billing') && (
+                <FilterBar
+                  filters={filters}
+                  onChange={setFilters}
+                  onReset={() => setFilters(DEFAULT_FILTERS)}
+                  operators={operators}
+                  states={states}
+                  totalCount={activeMonthWorkbook.masterRecords.length}
+                  filteredCount={filteredRecords.length}
+                />
+              )}
 
-                  {(activeTab === 'master' || activeTab === 'dth') && (
-                    <div className="bg-white border border-slate-200 rounded-lg p-8 text-center space-y-3">
-                      <FileSpreadsheet className="w-8 h-8 text-slate-400 mx-auto" />
-                      <h2 className="text-base font-semibold text-slate-900">
-                        {activeTab === 'master'
-                          ? 'Row-level Master sheet is not included in the November 2026 CSV'
-                          : 'DTH & Sony sheets are not included in the November 2026 CSV'}
-                      </h2>
-                      <p className="text-xs text-slate-600 max-w-lg mx-auto leading-relaxed">
-                        The attached <span className="font-mono">Monthly Video Tracker - November 2026 - Landing.csv</span> file contains the{' '}
-                        <strong className="text-slate-900">DASHBOARD</strong> summary sheet (727 achieve · 873 roster · W1–W3). You can upload a full November Master/DTH CSV or switch to the full October 2026 workbook (872 master rows, 224 DTH logs, 15 Sony DPOs).
-                      </p>
-                      <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
-                        {workbook.masterRecords.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setMonthScope('oct2026')}
-                            className="h-8 px-3.5 text-xs font-medium bg-slate-900 text-white rounded hover:bg-slate-800 whitespace-nowrap shrink-0 cursor-pointer"
-                          >
-                            Switch to Oct 2026 Full ({workbook.masterRecords.length} rows)
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab('overview')}
-                          className="h-8 px-3.5 text-xs font-medium bg-white text-slate-700 border border-slate-200 rounded hover:bg-slate-50 whitespace-nowrap shrink-0 cursor-pointer"
-                        >
-                          Back to Nov 2026 Overview
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="h-8 px-3.5 text-xs font-medium bg-white text-blue-700 border border-slate-200 rounded hover:bg-blue-50 whitespace-nowrap shrink-0 cursor-pointer"
-                        >
-                          Import Nov Master .xlsx / .csv
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  {(activeTab === 'overview' ||
-                    activeTab === 'master' ||
-                    activeTab === 'billing') && (
-                    <FilterBar
-                      filters={filters}
-                      onChange={setFilters}
-                      onReset={() => setFilters(DEFAULT_FILTERS)}
-                      operators={operators}
-                      states={states}
-                      totalCount={workbook.masterRecords.length}
-                      filteredCount={filteredRecords.length}
-                    />
-                  )}
+              {activeTab === 'overview' && (
+                <OverviewView
+                  stats={overviewStats}
+                  dashboardOperators={activeMonthWorkbook.dashboardOperators}
+                  filters={filters}
+                  monthScope={effectiveMonthScope}
+                  cycleRangeLabel={activeMonthWorkbook.cycleRangeLabel}
+                  comparisonTotals={comparisonTotals}
+                  onUpdateFilters={setFilters}
+                  onJumpToMaster={() => setActiveTab('master')}
+                  onJumpToOperatorQueue={handleJumpToOperatorQueue}
+                />
+              )}
 
-                  {activeTab === 'overview' && (
-                    <OverviewView
-                      stats={overviewStats}
-                      dashboardOperators={workbook.dashboardOperators}
-                      filters={filters}
-                      onUpdateFilters={setFilters}
-                      onJumpToMaster={() => setActiveTab('master')}
-                      onJumpToOperatorQueue={handleJumpToOperatorQueue}
-                    />
-                  )}
+              {activeTab === 'master' && (
+                <MasterTrackerView
+                  records={filteredRecords}
+                  selectedWeek={filters.week}
+                  monthScope={effectiveMonthScope}
+                  onSelectRecord={setInspectedRecord}
+                  onResetFilters={() => setFilters(DEFAULT_FILTERS)}
+                />
+              )}
 
-                  {activeTab === 'master' && (
-                    <MasterTrackerView
-                      records={filteredRecords}
-                      selectedWeek={filters.week}
-                      onSelectRecord={setInspectedRecord}
-                      onResetFilters={() => setFilters(DEFAULT_FILTERS)}
-                    />
-                  )}
+              {activeTab === 'operators' && (
+                <OperatorQueuesView
+                  operatorQueues={activeMonthWorkbook.operatorQueues}
+                  masterRecords={activeMonthWorkbook.masterRecords}
+                  dashboardOperators={activeMonthWorkbook.dashboardOperators}
+                  selectedOperator={selectedOperatorQueue}
+                  selectedWeek={filters.week}
+                  monthScope={effectiveMonthScope}
+                  onSelectOperator={setSelectedOperatorQueue}
+                  onSelectRecord={setInspectedRecord}
+                />
+              )}
 
-                  {activeTab === 'operators' && (
-                    <OperatorQueuesView
-                      operatorQueues={workbook.operatorQueues}
-                      masterRecords={workbook.masterRecords}
-                      dashboardOperators={workbook.dashboardOperators}
-                      selectedOperator={selectedOperatorQueue}
-                      selectedWeek={filters.week}
-                      onSelectOperator={setSelectedOperatorQueue}
-                      onSelectRecord={setInspectedRecord}
-                    />
-                  )}
+              {activeTab === 'billing' && (
+                <BillingExceptionsView
+                  records={filteredRecords}
+                  stats={overviewStats}
+                  selectedWeek={filters.week}
+                  monthScope={effectiveMonthScope}
+                  onSelectRecord={setInspectedRecord}
+                />
+              )}
 
-                  {activeTab === 'billing' && (
-                    <BillingExceptionsView
-                      records={filteredRecords}
-                      stats={overviewStats}
-                      selectedWeek={filters.week}
-                      onSelectRecord={setInspectedRecord}
-                    />
-                  )}
-
-                  {activeTab === 'dth' && (
-                    <DthSonyView
-                      dthLogs={workbook.dthLogs}
-                      sonyDates={workbook.sonyDates}
-                      sonyActivity={workbook.sonyActivity}
-                      selectedWeek={filters.week}
-                    />
-                  )}
-                </>
+              {activeTab === 'dth' && (
+                <DthSonyView
+                  dthLogs={activeMonthWorkbook.dthLogs}
+                  sonyDates={activeMonthWorkbook.sonyDates}
+                  sonyActivity={activeMonthWorkbook.sonyActivity}
+                  selectedWeek={filters.week}
+                  monthScope={effectiveMonthScope}
+                />
               )}
             </>
-          )}
+          ) : null}
         </main>
       </div>
 

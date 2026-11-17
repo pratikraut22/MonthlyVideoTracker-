@@ -143,24 +143,33 @@ export interface DashboardDataSnapshot {
   } | null;
 }
 
-export interface WorkbookData {
+export type MonthScope = 'oct2026' | 'nov2026';
+
+export interface MonthWorkbook {
+  monthScope: MonthScope;
   sourceName: string;
   periodLabel: string;
-  loadedAt: string;
+  activeWeekHint: string;
+  weekStartNumber: number;
+  cycleRangeLabel: string;
   dateHeaders: { date: string; dayName: string }[];
   masterRecords: MasterNetworkRecord[];
   dashboardOperators: DashboardOperatorSummary[];
   dashboardTotals: DashboardDataSnapshot['totals'];
-  novemberDashboard: DashboardDataSnapshot | null;
   dthLogs: DthLogEntry[];
   sonyDates: string[];
   sonyActivity: SonyActivityRow[];
   operatorQueues: Record<string, OperatorPendingRow[]>;
 }
 
-export type MonthScope = 'oct2026' | 'nov2026';
+export interface WorkbookData {
+  loadedAt: string;
+  oct2026: MonthWorkbook | null;
+  nov2026: MonthWorkbook | null;
+  snapshotOnly: DashboardDataSnapshot | null;
+}
 
-export type WeekFilter = 'ALL' | 40 | 41 | 42 | 43 | 44;
+export type WeekFilter = 'ALL' | 1 | 2 | 3 | 4 | 5;
 
 export interface TrackerFilters {
   week: WeekFilter;

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Clock, IndianRupee, Search, Tv } from 'lucide-react';
-import type { DthLogEntry, SonyActivityRow, WeekFilter } from '../types/tracker';
+import type { DthLogEntry, MonthScope, SonyActivityRow, WeekFilter } from '../types/tracker';
 import {
   formatCurrencyINR,
   getWeekMeta,
@@ -12,6 +12,7 @@ interface DthSonyViewProps {
   sonyDates: string[];
   sonyActivity: SonyActivityRow[];
   selectedWeek: WeekFilter;
+  monthScope: MonthScope;
 }
 
 export function DthSonyView({
@@ -19,17 +20,18 @@ export function DthSonyView({
   sonyDates,
   sonyActivity,
   selectedWeek,
+  monthScope,
 }: DthSonyViewProps) {
   const [subTab, setSubTab] = useState<'dth' | 'sony'>('dth');
   const [dthOp, setDthOp] = useState('ALL');
   const [dthSearch, setDthSearch] = useState('');
 
-  const weekMeta = getWeekMeta(selectedWeek);
+  const weekMeta = getWeekMeta(selectedWeek, monthScope);
 
   const weekScopedDth = useMemo(() => {
     if (selectedWeek === 'ALL') return dthLogs;
-    return dthLogs.filter((row) => getWeekNumberForDate(row.date) === selectedWeek);
-  }, [dthLogs, selectedWeek]);
+    return dthLogs.filter((row) => getWeekNumberForDate(row.date, monthScope) === selectedWeek);
+  }, [dthLogs, selectedWeek, monthScope]);
 
   const dthOperators = useMemo(
     () =>
@@ -86,9 +88,9 @@ export function DthSonyView({
   const visibleSonyDateIndices = useMemo(() => {
     if (selectedWeek === 'ALL') return sonyDates.map((_, idx) => idx);
     return sonyDates
-      .map((d, idx) => (getWeekNumberForDate(d) === selectedWeek ? idx : -1))
+      .map((d, idx) => (getWeekNumberForDate(d, monthScope) === selectedWeek ? idx : -1))
       .filter((idx) => idx !== -1);
-  }, [sonyDates, selectedWeek]);
+  }, [sonyDates, selectedWeek, monthScope]);
 
   const activeSonyDates =
     visibleSonyDateIndices.length > 0
@@ -297,8 +299,8 @@ export function DthSonyView({
                 {weekMeta
                   ? activeSonyDates.length > 0
                     ? `Filtered to ${weekMeta.wkLabel} (${activeSonyDates.length} dates logged)`
-                    : `No Sony Activity dates logged during ${weekMeta.wkLabel} (Sony logs cover Oct 21 – Oct 30 in WK43 & WK44)`
-                  : 'Daily landing counts recorded from 21/10/2026 to 30/10/2026'}
+                    : `No Sony Activity dates logged during ${weekMeta.wkLabel} (Workbook Sony sheet logs ${sonyDates[0] ?? ''} – ${sonyDates[sonyDates.length - 1] ?? ''})`
+                  : `Daily landing counts recorded from ${sonyDates[0] ?? '21/10/2026'} to ${sonyDates[sonyDates.length - 1] ?? '30/10/2026'}`}
               </p>
             </div>
             <span className="text-xs font-mono tabular-nums text-slate-600">

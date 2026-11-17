@@ -3,6 +3,7 @@ import { ExternalLink, Search, Users } from 'lucide-react';
 import type {
   DashboardOperatorSummary,
   MasterNetworkRecord,
+  MonthScope,
   OperatorPendingRow,
   WeekFilter,
 } from '../types/tracker';
@@ -19,6 +20,7 @@ interface OperatorQueuesViewProps {
   dashboardOperators: DashboardOperatorSummary[];
   selectedOperator: string;
   selectedWeek: WeekFilter;
+  monthScope: MonthScope;
   onSelectOperator: (op: string) => void;
   onSelectRecord: (record: MasterNetworkRecord) => void;
 }
@@ -29,6 +31,7 @@ export function OperatorQueuesView({
   dashboardOperators,
   selectedOperator,
   selectedWeek,
+  monthScope,
   onSelectOperator,
   onSelectRecord,
 }: OperatorQueuesViewProps) {
@@ -39,7 +42,7 @@ export function OperatorQueuesView({
   const [weekStatusFilter, setWeekStatusFilter] = useState<'all' | 'done' | 'missing'>('all');
 
   const weekIdx = getWeekIndex(selectedWeek);
-  const weekMeta = getWeekMeta(selectedWeek);
+  const weekMeta = getWeekMeta(selectedWeek, monthScope);
 
   const queueKeys = useMemo(() => {
     const keys = Object.keys(operatorQueues).sort();

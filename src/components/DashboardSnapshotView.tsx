@@ -51,11 +51,11 @@ const NON_FIELD_OPS = new Set([
 ]);
 
 const WEEK_INDEX_TO_FILTER: Record<number, Exclude<WeekFilter, 'ALL'>> = {
-  0: 40,
-  1: 41,
-  2: 42,
-  3: 43,
-  4: 44,
+  0: 1,
+  1: 2,
+  2: 3,
+  3: 4,
+  4: 5,
 };
 
 export function DashboardSnapshotView({

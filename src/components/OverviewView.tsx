@@ -8,7 +8,9 @@ import {
   Radio,
 } from 'lucide-react';
 import type {
+  DashboardDataSnapshot,
   DashboardOperatorSummary,
+  MonthScope,
   TrackerFilters,
 } from '../types/tracker';
 import {
@@ -17,12 +19,16 @@ import {
   formatNumber,
   getWeekIndex,
   getWeekMeta,
+  getWeekOptionsForMonth,
 } from '../utils/analytics';
 
 interface OverviewViewProps {
   stats: ComputedOverviewStats;
   dashboardOperators: DashboardOperatorSummary[];
   filters: TrackerFilters;
+  monthScope: MonthScope;
+  cycleRangeLabel?: string;
+  comparisonTotals?: DashboardDataSnapshot['totals'];
   onUpdateFilters: (next: TrackerFilters) => void;
   onJumpToMaster: () => void;
   onJumpToOperatorQueue: (op: string) => void;
@@ -43,6 +49,9 @@ export function OverviewView({
   stats,
   dashboardOperators,
   filters,
+  monthScope,
+  cycleRangeLabel,
+  comparisonTotals,
   onUpdateFilters,
   onJumpToMaster,
   onJumpToOperatorQueue,
@@ -66,7 +75,16 @@ export function OverviewView({
   }, [stats.stateStats, stateSort]);
 
   const selectedWeekIdx = getWeekIndex(filters.week);
-  const activeWeekMeta = getWeekMeta(filters.week);
+  const activeWeekMeta = getWeekMeta(filters.week, monthScope);
+  const weekOptions = getWeekOptionsForMonth(monthScope);
+  const wkRangeTitle = `${weekOptions[0].wkLabel} – ${weekOptions[4].wkLabel}`;
+  const defaultPulseRange =
+    monthScope === 'nov2026'
+      ? 'Nov 2 – Dec 6, 2026'
+      : 'Sep 28 – Nov 1, 2026';
+  const pulseRangeTitle = cycleRangeLabel
+    ? cycleRangeLabel.replace(/\s*\(\d+ days\)$/, '')
+    : defaultPulseRange;
 
   const marketLookup = useMemo(() => {
     const map = new Map<string, string>();
@@ -121,6 +139,19 @@ export function OverviewView({
     stats.totalNetworks > 0
       ? Math.round((stats.activeWeekBoxNetworks / stats.totalNetworks) * 100)
       : 0;
+
+  const achieveDenom = Math.max(1, stats.activeAchieveCount);
+  const billingDoneActivePct =
+    Math.round((stats.billingDoneCount / achieveDenom) * 1000) / 10;
+  const billingPendingActivePct =
+    Math.round((stats.billingPendingActiveAll / achieveDenom) * 1000) / 10;
+  const catAPct = Math.round((stats.catAActiveCount / achieveDenom) * 100);
+  const barcPct = Math.round((stats.barcActiveCount / achieveDenom) * 100);
+  const videoPendingPct =
+    stats.totalNetworks > 0
+      ? Math.round((stats.videoPendingCount / stats.totalNetworks) * 100)
+      : 0;
+  const monthTitle = monthScope === 'nov2026' ? 'November' : 'October';
 
   const maxWeeklyVal = Math.max(
     1,
@@ -249,7 +280,7 @@ export function OverviewView({
             <div>
               <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-blue-600" />
-                Weekly Attainment Trajectory (WK40 – WK44)
+                Weekly Attainment Trajectory ({wkRangeTitle})
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
                 Click any week column to focus the entire dashboard on that week
@@ -310,7 +341,7 @@ export function OverviewView({
                 const vidH = (wk.videosSubmitted / maxWeeklyVal) * 150;
                 const barcH = (wk.barcVideos / maxWeeklyVal) * 150;
                 const isHovered = hoveredWeek === idx;
-                const isSelected = filters.week === wk.weekNumber;
+                const isSelected = filters.week === wk.weekSlot;
                 const isDimmed = selectedWeekIdx !== null && !isSelected;
 
                 return (
@@ -321,7 +352,7 @@ export function OverviewView({
                     onClick={() =>
                       onUpdateFilters({
                         ...filters,
-                        week: isSelected ? 'ALL' : wk.weekNumber,
+                        week: isSelected ? 'ALL' : wk.weekSlot,
                       })
                     }
                     className="cursor-pointer"
@@ -409,213 +440,249 @@ export function OverviewView({
         <section className="bg-white border border-slate-200 rounded-lg p-5 flex flex-col justify-between">
           <div>
             <h2 className="text-sm font-semibold text-slate-900">
-              Segment Breakdown
+              {monthTitle} Billing & Category Mix
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Click any segment to filter the dashboard
+              Billing attainment across {formatNumber(stats.activeAchieveCount)} active networks
             </p>
 
             <div className="mt-4 space-y-3">
-              <div className="text-xs font-medium text-slate-600">By Category</div>
-              {[
-                {
-                  label: 'CATEGORY A',
-                  count: stats.catACount,
-                  barColor: 'bg-blue-600',
-                },
-                {
-                  label: 'CATEGORY B',
-                  count: stats.catBCount,
-                  barColor: 'bg-slate-600',
-                },
-                {
-                  label: 'OTHERS',
-                  count: stats.othersCatCount,
-                  barColor: 'bg-slate-400',
-                },
-              ].map((item) => {
-                const pct =
-                  stats.totalNetworks > 0
-                    ? Math.round((item.count / stats.totalNetworks) * 100)
-                    : 0;
-                const active = filters.category === item.label;
-                return (
-                  <button
-                    key={item.label}
-                    type="button"
-                    onClick={() =>
-                      onUpdateFilters({
-                        ...filters,
-                        category: active
-                          ? 'ALL'
-                          : (item.label as TrackerFilters['category']),
-                      })
-                    }
-                    className={`w-full text-left group cursor-pointer rounded p-1 -m-1 transition-colors ${
-                      active ? 'bg-blue-50' : 'hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="font-medium text-slate-800">{item.label}</span>
-                      <span className="font-mono tabular-nums text-slate-600">
-                        {item.count} ({pct}%)
-                      </span>
-                    </div>
-                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full ${item.barColor} transition-all`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </button>
-                );
-              })}
+              <button
+                type="button"
+                onClick={() =>
+                  onUpdateFilters({
+                    ...filters,
+                    billing: filters.billing === 'DONE' ? 'ALL' : 'DONE',
+                  })
+                }
+                className={`w-full text-left cursor-pointer rounded p-1 -m-1 transition-colors ${
+                  filters.billing === 'DONE' ? 'bg-emerald-50' : 'hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex justify-between gap-2 text-xs mb-1">
+                  <span className="font-medium text-emerald-800 truncate">
+                    Billing Done (Cat A {stats.billingDoneA} · B {stats.billingDoneB} · Oth{' '}
+                    {stats.billingDoneOthers})
+                  </span>
+                  <span className="font-mono tabular-nums text-emerald-700 font-semibold shrink-0">
+                    {formatNumber(stats.billingDoneCount)} ({billingDoneActivePct}%)
+                  </span>
+                </div>
+                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-600 transition-all"
+                    style={{ width: `${Math.min(100, billingDoneActivePct)}%` }}
+                  />
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  onUpdateFilters({
+                    ...filters,
+                    billing: filters.billing === 'PENDING' ? 'ALL' : 'PENDING',
+                  })
+                }
+                className={`w-full text-left cursor-pointer rounded p-1 -m-1 transition-colors ${
+                  filters.billing === 'PENDING' ? 'bg-amber-50' : 'hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex justify-between gap-2 text-xs mb-1">
+                  <span className="font-medium text-amber-800 truncate">
+                    Billing Pending (Cat A {stats.billingPendingActiveA} · B/Oth{' '}
+                    {stats.billingPendingActiveBO})
+                  </span>
+                  <span className="font-mono tabular-nums text-amber-700 font-semibold shrink-0">
+                    {formatNumber(stats.billingPendingActiveAll)} ({billingPendingActivePct}%)
+                  </span>
+                </div>
+                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-amber-500 transition-all"
+                    style={{ width: `${Math.min(100, billingPendingActivePct)}%` }}
+                  />
+                </div>
+              </button>
             </div>
 
             <div className="mt-5 pt-4 border-t border-slate-100 space-y-3">
-              <div className="text-xs font-medium text-slate-600">By Tracking Program</div>
-              {[
-                { label: 'BARC', count: stats.barcCount, barColor: 'bg-emerald-600' },
-                { label: 'STAR', count: stats.starCount, barColor: 'bg-indigo-600' },
-                { label: 'OTHERS', count: stats.othersProgramCount, barColor: 'bg-slate-400' },
-              ].map((item) => {
-                const pct =
-                  stats.totalNetworks > 0
-                    ? Math.round((item.count / stats.totalNetworks) * 100)
-                    : 0;
-                const active = filters.program === item.label;
-                return (
-                  <button
-                    key={item.label}
-                    type="button"
-                    onClick={() =>
-                      onUpdateFilters({
-                        ...filters,
-                        program: active
-                          ? 'ALL'
-                          : (item.label as TrackerFilters['program']),
-                      })
-                    }
-                    className={`w-full text-left cursor-pointer rounded p-1 -m-1 transition-colors ${
-                      active ? 'bg-emerald-50' : 'hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="font-medium text-slate-800">{item.label}</span>
-                      <span className="font-mono tabular-nums text-slate-600">
-                        {item.count} ({pct}%)
-                      </span>
-                    </div>
-                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full ${item.barColor} transition-all`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </button>
-                );
-              })}
+              <div className="text-xs font-medium text-slate-600">
+                Roster & Network Status ({formatNumber(stats.totalNetworks)} Total)
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  onUpdateFilters({
+                    ...filters,
+                    category: filters.category === 'CATEGORY A' ? 'ALL' : 'CATEGORY A',
+                  })
+                }
+                className={`w-full text-left cursor-pointer rounded p-1 -m-1 transition-colors ${
+                  filters.category === 'CATEGORY A' ? 'bg-indigo-50' : 'hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="font-medium text-slate-800">Category A Networks</span>
+                  <span className="font-mono tabular-nums text-slate-700">
+                    {formatNumber(stats.catAActiveCount)} ({catAPct}%)
+                  </span>
+                </div>
+                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-indigo-600 transition-all"
+                    style={{ width: `${Math.min(100, catAPct)}%` }}
+                  />
+                </div>
+                <div className="text-[11px] font-mono text-slate-400 mt-0.5">
+                  {stats.catAOnline} ON · {stats.catAOffline} OFF
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  onUpdateFilters({
+                    ...filters,
+                    program: filters.program === 'BARC' ? 'ALL' : 'BARC',
+                  })
+                }
+                className={`w-full text-left cursor-pointer rounded p-1 -m-1 transition-colors ${
+                  filters.program === 'BARC' ? 'bg-blue-50' : 'hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="font-medium text-slate-800">BARC Networks</span>
+                  <span className="font-mono tabular-nums text-slate-700">
+                    {formatNumber(stats.barcActiveCount)} ({barcPct}%)
+                  </span>
+                </div>
+                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-600 transition-all"
+                    style={{ width: `${Math.min(100, barcPct)}%` }}
+                  />
+                </div>
+                <div className="text-[11px] font-mono text-slate-400 mt-0.5">
+                  {stats.barcOnline} ON · {stats.barcOffline} OFF
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={onJumpToMaster}
+                className="w-full text-left cursor-pointer rounded p-1 -m-1 hover:bg-slate-50 transition-colors"
+              >
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="font-medium text-slate-800">Pending Video Networks</span>
+                  <span className="font-mono tabular-nums text-slate-700">
+                    {formatNumber(stats.videoPendingCount)} ({videoPendingPct}%)
+                  </span>
+                </div>
+                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-slate-500 transition-all"
+                    style={{ width: `${Math.min(100, videoPendingPct)}%` }}
+                  />
+                </div>
+                <div className="text-[11px] font-mono text-slate-400 mt-0.5">
+                  {formatNumber(stats.totalVideosVerified)} videos recorded · {formatNumber(stats.videoYesCount)} done
+                </div>
+              </button>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={onJumpToMaster}
-            className="mt-4 pt-3 border-t border-slate-100 text-xs font-medium text-blue-700 hover:text-blue-800 text-left cursor-pointer"
-          >
-            Open filtered records in Master Tracker →
-          </button>
         </section>
       </div>
+
+      <section className="bg-white border border-slate-200 rounded-lg p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">
+              35-Day Daily Landing Pulse ({pulseRangeTitle})
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {activeWeekMeta
+                ? `Highlighting ${activeWeekMeta.shortLabel} · ${activeWeekMeta.wkLabel} (${activeWeekMeta.rangeLabel})`
+                : 'Daily active network landings recorded as ON across all 5 weeks'}
+            </p>
+          </div>
+          <div className="text-xs font-mono tabular-nums text-slate-700 min-h-[16px]">
+            {hoveredDay !== null && stats.dailyHeatmap[hoveredDay] ? (
+              <span>
+                {stats.dailyHeatmap[hoveredDay].dayName}{' '}
+                {stats.dailyHeatmap[hoveredDay].date}:{' '}
+                <strong>{stats.dailyHeatmap[hoveredDay].onCount}</strong> ON
+              </span>
+            ) : (
+              <span className="text-slate-400">Hover any day bar to inspect</span>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-[repeat(35,minmax(0,1fr))] gap-1 items-end h-28 pt-2 border-b border-slate-200 pb-1">
+          {stats.dailyHeatmap.map((day, idx) => {
+            const hPct = Math.max(6, Math.round((day.onCount / maxDayOn) * 100));
+            const isWeekStart = idx % 7 === 0 && idx > 0;
+            const isDimmed =
+              selectedWeekIdx !== null && day.weekIndex !== selectedWeekIdx;
+            const isHighlightedWeek =
+              selectedWeekIdx !== null && day.weekIndex === selectedWeekIdx;
+            return (
+              <div
+                key={day.date || idx}
+                onMouseEnter={() => setHoveredDay(idx)}
+                onMouseLeave={() => setHoveredDay(null)}
+                className={`h-full flex flex-col justify-end group cursor-pointer ${
+                  isWeekStart ? 'border-l border-slate-200 pl-0.5' : ''
+                } ${isDimmed ? 'opacity-25' : ''}`}
+              >
+                <div
+                  className={`w-full rounded-t-xs transition-colors ${
+                    hoveredDay === idx || isHighlightedWeek
+                      ? 'bg-blue-600'
+                      : day.onCount > maxDayOn * 0.65
+                        ? 'bg-emerald-600'
+                        : 'bg-slate-400'
+                  }`}
+                  style={{ height: `${hPct}%` }}
+                />
+              </div>
+            );
+          })}
+        </div>
+        <div className="grid grid-cols-5 text-[11px] font-mono text-slate-500 mt-1.5">
+          {stats.weeklyMetrics.map((wk, idx) => (
+            <button
+              key={wk.weekLabel}
+              type="button"
+              onClick={() =>
+                onUpdateFilters({
+                  ...filters,
+                  week: filters.week === wk.weekSlot ? 'ALL' : wk.weekSlot,
+                })
+              }
+              className={`text-left cursor-pointer hover:text-slate-900 ${
+                selectedWeekIdx === idx ? 'text-blue-700 font-semibold' : ''
+              }`}
+            >
+              {wk.weekLabel} · {wk.rangeLabel.split('–')[0].trim()}
+            </button>
+          ))}
+        </div>
+      </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <section className="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-5">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
             <div>
               <h2 className="text-sm font-semibold text-slate-900">
-                35-Day Daily Landing Pulse (Sep 28 – Nov 1, 2026)
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {activeWeekMeta
-                  ? `Highlighting ${activeWeekMeta.shortLabel} · ${activeWeekMeta.wkLabel} (${activeWeekMeta.rangeLabel})`
-                  : 'Daily active network landings recorded as ON across all 5 weeks'}
-              </p>
-            </div>
-            <div className="text-xs font-mono tabular-nums text-slate-700 min-h-[16px]">
-              {hoveredDay !== null && stats.dailyHeatmap[hoveredDay] ? (
-                <span>
-                  {stats.dailyHeatmap[hoveredDay].dayName}{' '}
-                  {stats.dailyHeatmap[hoveredDay].date}:{' '}
-                  <strong>{stats.dailyHeatmap[hoveredDay].onCount}</strong> ON
-                </span>
-              ) : (
-                <span className="text-slate-400">Hover any day bar to inspect</span>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-[repeat(35,minmax(0,1fr))] gap-1 items-end h-28 pt-2 border-b border-slate-200 pb-1">
-            {stats.dailyHeatmap.map((day, idx) => {
-              const hPct = Math.max(6, Math.round((day.onCount / maxDayOn) * 100));
-              const isWeekStart = idx % 7 === 0 && idx > 0;
-              const isDimmed =
-                selectedWeekIdx !== null && day.weekIndex !== selectedWeekIdx;
-              const isHighlightedWeek =
-                selectedWeekIdx !== null && day.weekIndex === selectedWeekIdx;
-              return (
-                <div
-                  key={day.date || idx}
-                  onMouseEnter={() => setHoveredDay(idx)}
-                  onMouseLeave={() => setHoveredDay(null)}
-                  className={`h-full flex flex-col justify-end group cursor-pointer ${
-                    isWeekStart ? 'border-l border-slate-200 pl-0.5' : ''
-                  } ${isDimmed ? 'opacity-25' : ''}`}
-                >
-                  <div
-                    className={`w-full rounded-t-xs transition-colors ${
-                      hoveredDay === idx || isHighlightedWeek
-                        ? 'bg-blue-600'
-                        : day.onCount > maxDayOn * 0.65
-                          ? 'bg-emerald-600'
-                          : 'bg-slate-400'
-                    }`}
-                    style={{ height: `${hPct}%` }}
-                  />
-                </div>
-              );
-            })}
-          </div>
-          <div className="grid grid-cols-5 text-[11px] font-mono text-slate-500 mt-1.5">
-            {stats.weeklyMetrics.map((wk, idx) => (
-              <button
-                key={wk.weekLabel}
-                type="button"
-                onClick={() =>
-                  onUpdateFilters({
-                    ...filters,
-                    week: filters.week === wk.weekNumber ? 'ALL' : wk.weekNumber,
-                  })
-                }
-                className={`text-left cursor-pointer hover:text-slate-900 ${
-                  selectedWeekIdx === idx ? 'text-blue-700 font-semibold' : ''
-                }`}
-              >
-                {wk.weekLabel} · {wk.rangeLabel.split('–')[0].trim()}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="bg-white border border-slate-200 rounded-lg p-5">
-          <div className="flex items-center justify-between gap-2 mb-3">
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">
                 Top States ({stats.stateStats.length})
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
                 {activeWeekMeta
-                  ? `${activeWeekMeta.wkLabel} video % · click state to filter`
-                  : 'Billing done % & share · click state to filter'}
+                  ? `${activeWeekMeta.wkLabel} video % & network share · click any state to filter`
+                  : 'Billing done % & network share · click any state to filter'}
               </p>
             </div>
             <div
@@ -647,12 +714,17 @@ export function OverviewView({
               </button>
             </div>
           </div>
-          <div className="divide-y divide-slate-100 max-h-52 overflow-y-auto pr-1">
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 divide-y sm:divide-y-0">
             {sortedStates.map((st) => {
               const active = filters.state === st.state;
               const completedCount = activeWeekMeta
                 ? st.selectedWeekVideoNetworks
                 : st.billingDone;
+              const opPreview =
+                st.operators.length > 0
+                  ? ` · ${st.operators.slice(0, 3).join(', ')}${st.operators.length > 3 ? ` +${st.operators.length - 3}` : ''}`
+                  : '';
               return (
                 <button
                   key={st.state}
@@ -663,26 +735,26 @@ export function OverviewView({
                       state: active ? 'ALL' : st.state,
                     })
                   }
-                  className={`w-full py-2 px-1.5 text-xs text-left cursor-pointer transition-colors space-y-1 ${
+                  className={`w-full py-2 px-2 rounded text-xs text-left cursor-pointer transition-colors space-y-1 ${
                     active
                       ? 'bg-blue-50 text-blue-900'
                       : 'hover:bg-slate-50 text-slate-700'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium truncate">
+                    <span className="font-medium truncate" title={`${st.state}${opPreview}`}>
                       {st.state}{' '}
                       <span className="text-[11px] font-mono font-normal text-slate-400">
-                        ({st.sharePct}%)
+                        ({st.sharePct}%{opPreview})
                       </span>
                     </span>
                     <span className="font-mono tabular-nums text-slate-700 shrink-0">
                       {completedCount}/{st.total}{' '}
                       <strong
                         className={
-                          st.attainmentPct >= 60
+                          st.attainmentPct >= 50
                             ? 'text-emerald-700'
-                            : st.attainmentPct >= 30
+                            : st.attainmentPct >= 25
                               ? 'text-amber-700'
                               : 'text-slate-600'
                         }
@@ -691,24 +763,138 @@ export function OverviewView({
                       </strong>
                     </span>
                   </div>
-                  <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                     <div
                       className={`h-full transition-all ${
                         active
                           ? 'bg-blue-600'
-                          : st.attainmentPct >= 60
+                          : st.attainmentPct >= 50
                             ? 'bg-emerald-600'
-                            : st.attainmentPct >= 30
+                            : st.attainmentPct >= 25
                               ? 'bg-amber-500'
                               : 'bg-slate-400'
                       }`}
-                      style={{ width: `${st.attainmentPct}%` }}
+                      style={{ width: `${Math.min(100, st.attainmentPct)}%` }}
                     />
                   </div>
                 </button>
               );
             })}
           </div>
+        </section>
+
+        <section className="bg-white border border-slate-200 rounded-lg p-5 flex flex-col justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">
+              {comparisonTotals
+                ? monthScope === 'nov2026'
+                  ? 'Oct → Nov 2026 Comparison'
+                  : 'Nov → Oct 2026 Comparison'
+                : 'Category & Program Split'}
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {comparisonTotals
+                ? monthScope === 'nov2026'
+                  ? 'November live workbook against October full cycle'
+                  : 'October full cycle against November live workbook'
+                : 'Click any category or program row to filter'}
+            </p>
+
+            {comparisonTotals ? (
+              <div className="mt-4 divide-y divide-slate-100 text-xs">
+                {[
+                  {
+                    label: 'Active (ON + OFF)',
+                    other: comparisonTotals.allAchieve,
+                    current: stats.activeAchieveCount,
+                  },
+                  {
+                    label: 'Online Networks',
+                    other: comparisonTotals.allOnline,
+                    current: stats.onlineCount,
+                    suffix: ' ON',
+                  },
+                  {
+                    label: 'Category A Active',
+                    other: comparisonTotals.catAAchieve,
+                    current: stats.catAActiveCount,
+                  },
+                  {
+                    label: 'Billing Achieved',
+                    other: comparisonTotals.billingAchieveAll,
+                    current: stats.billingDoneCount,
+                  },
+                  {
+                    label: 'Verified Videos',
+                    other: comparisonTotals.videoWeeks.reduce((s, v) => s + v, 0),
+                    current: stats.totalVideosVerified,
+                  },
+                  {
+                    label: 'BARC Active Total',
+                    other: comparisonTotals.barcAchieve,
+                    current: stats.barcActiveCount,
+                  },
+                  {
+                    label: 'Total Master Roster',
+                    other: comparisonTotals.videoTotalNetworks,
+                    current: stats.totalNetworks,
+                  },
+                ].map((row) => {
+                  const diff = row.current - row.other;
+                  return (
+                    <div
+                      key={row.label}
+                      className="py-2 flex items-center justify-between gap-2"
+                    >
+                      <span className="text-slate-600">{row.label}</span>
+                      <div className="font-mono tabular-nums text-right">
+                        <span className="text-slate-400">{formatNumber(row.other)}</span>
+                        <span className="text-slate-300 mx-1">→</span>
+                        <span className="font-semibold text-slate-900">
+                          {formatNumber(row.current)}
+                          {row.suffix ?? ''}
+                        </span>{' '}
+                        <span
+                          className={
+                            diff > 0
+                              ? 'text-emerald-700'
+                              : diff < 0
+                                ? 'text-amber-700'
+                                : 'text-slate-400'
+                          }
+                        >
+                          ({diff > 0 ? `+${diff}` : diff})
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="mt-4 space-y-2 text-xs">
+                {[
+                  { label: 'CATEGORY A', count: stats.catACount },
+                  { label: 'CATEGORY B', count: stats.catBCount },
+                  { label: 'OTHERS', count: stats.othersCatCount },
+                ].map((c) => (
+                  <div key={c.label} className="flex justify-between py-1.5 border-b border-slate-100">
+                    <span className="text-slate-600">{c.label}</span>
+                    <span className="font-mono tabular-nums font-semibold text-slate-900">
+                      {formatNumber(c.count)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={onJumpToMaster}
+            className="mt-4 pt-3 border-t border-slate-100 text-xs font-medium text-blue-700 hover:text-blue-800 text-left cursor-pointer"
+          >
+            Open filtered records in Master Tracker →
+          </button>
         </section>
       </div>
 

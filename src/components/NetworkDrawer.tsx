@@ -22,10 +22,14 @@ export function NetworkDrawer({ record, onClose }: NetworkDrawerProps) {
   if (!record) return null;
 
   const weekChunks = [0, 1, 2, 3, 4].map((wkIdx) => ({
-    weekLabel: `Week ${40 + wkIdx}`,
+    weekLabel: `Week ${record.weeks[wkIdx]?.weekNumber ?? 40 + wkIdx}`,
     rangeLabel: record.weeks[wkIdx]?.rangeLabel ?? '',
     days: record.daily.slice(wkIdx * 7, wkIdx * 7 + 7),
   }));
+  const firstWkNum = record.weeks[0]?.weekNumber ?? 40;
+  const lastWkNum = record.weeks[4]?.weekNumber ?? firstWkNum + 4;
+  const firstDateRange = record.weeks[0]?.rangeLabel.split('–')[0]?.trim() ?? '';
+  const lastDateRange = record.weeks[4]?.rangeLabel.split('–')[1]?.trim() ?? '';
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/30 backdrop-blur-[1px]">
@@ -113,7 +117,7 @@ export function NetworkDrawer({ record, onClose }: NetworkDrawerProps) {
             <div className="flex items-center justify-between mb-2.5">
               <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-slate-500" />
-                35-Day Daily Landing Matrix (Sep 28 – Nov 1)
+                {record.daily.length}-Day Daily Landing Matrix ({firstDateRange} – {lastDateRange})
               </h3>
               <span className="text-xs font-mono tabular-nums text-slate-600">
                 {record.totalOnDays} / {record.daily.length} days ON
@@ -160,7 +164,7 @@ export function NetworkDrawer({ record, onClose }: NetworkDrawerProps) {
 
           <section>
             <h3 className="text-sm font-semibold text-slate-900 mb-2.5">
-              Weekly Verification Logs (Week 40 – Week 44)
+              Weekly Verification Logs (Week {firstWkNum} – Week {lastWkNum})
             </h3>
             <div className="border border-slate-200 rounded-lg overflow-hidden">
               <table className="w-full text-xs">

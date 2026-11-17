@@ -1,5 +1,6 @@
 import type {
   MasterNetworkRecord,
+  MonthScope,
   TrackerFilters,
   WeekFilter,
 } from '../types/tracker';
@@ -18,30 +19,51 @@ export const DEFAULT_FILTERS: TrackerFilters = {
 export interface WeekMeta {
   value: Exclude<WeekFilter, 'ALL'>;
   index: number;
+  weekNumber: number;
   shortLabel: string;
   wkLabel: string;
   rangeLabel: string;
 }
 
-export const WEEK_OPTIONS: WeekMeta[] = [
-  { value: 40, index: 0, shortLabel: 'W1', wkLabel: 'WK40', rangeLabel: 'Sep 28 – Oct 4' },
-  { value: 41, index: 1, shortLabel: 'W2', wkLabel: 'WK41', rangeLabel: 'Oct 5 – Oct 11' },
-  { value: 42, index: 2, shortLabel: 'W3', wkLabel: 'WK42', rangeLabel: 'Oct 12 – Oct 18' },
-  { value: 43, index: 3, shortLabel: 'W4', wkLabel: 'WK43', rangeLabel: 'Oct 19 – Oct 25' },
-  { value: 44, index: 4, shortLabel: 'W5', wkLabel: 'WK44', rangeLabel: 'Oct 26 – Nov 1' },
+const OCT_WEEK_OPTIONS: WeekMeta[] = [
+  { value: 1, index: 0, weekNumber: 40, shortLabel: 'W1', wkLabel: 'WK40', rangeLabel: 'Sep 28 – Oct 4' },
+  { value: 2, index: 1, weekNumber: 41, shortLabel: 'W2', wkLabel: 'WK41', rangeLabel: 'Oct 5 – Oct 11' },
+  { value: 3, index: 2, weekNumber: 42, shortLabel: 'W3', wkLabel: 'WK42', rangeLabel: 'Oct 12 – Oct 18' },
+  { value: 4, index: 3, weekNumber: 43, shortLabel: 'W4', wkLabel: 'WK43', rangeLabel: 'Oct 19 – Oct 25' },
+  { value: 5, index: 4, weekNumber: 44, shortLabel: 'W5', wkLabel: 'WK44', rangeLabel: 'Oct 26 – Nov 1' },
 ];
+
+const NOV_WEEK_OPTIONS: WeekMeta[] = [
+  { value: 1, index: 0, weekNumber: 45, shortLabel: 'W1', wkLabel: 'WK45', rangeLabel: 'Nov 2 – Nov 8' },
+  { value: 2, index: 1, weekNumber: 46, shortLabel: 'W2', wkLabel: 'WK46', rangeLabel: 'Nov 9 – Nov 15' },
+  { value: 3, index: 2, weekNumber: 47, shortLabel: 'W3', wkLabel: 'WK47', rangeLabel: 'Nov 16 – Nov 22' },
+  { value: 4, index: 3, weekNumber: 48, shortLabel: 'W4', wkLabel: 'WK48', rangeLabel: 'Nov 23 – Nov 29' },
+  { value: 5, index: 4, weekNumber: 49, shortLabel: 'W5', wkLabel: 'WK49', rangeLabel: 'Nov 30 – Dec 6' },
+];
+
+export function getWeekOptionsForMonth(monthScope: MonthScope): WeekMeta[] {
+  return monthScope === 'nov2026' ? NOV_WEEK_OPTIONS : OCT_WEEK_OPTIONS;
+}
 
 export function getWeekIndex(week: WeekFilter): number | null {
   if (week === 'ALL') return null;
-  return week - 40;
+  return week - 1;
 }
 
-export function getWeekMeta(week: WeekFilter): WeekMeta | null {
+export function getWeekMeta(
+  week: WeekFilter,
+  monthScope: MonthScope = 'oct2026',
+): WeekMeta | null {
   if (week === 'ALL') return null;
-  return WEEK_OPTIONS.find((w) => w.value === week) ?? null;
+  return (
+    getWeekOptionsForMonth(monthScope).find((w) => w.value === week) ?? null
+  );
 }
 
-export function getWeekNumberForDate(dateStr: string): Exclude<WeekFilter, 'ALL'> | null {
+export function getWeekNumberForDate(
+  dateStr: string,
+  monthScope: MonthScope = 'oct2026',
+): Exclude<WeekFilter, 'ALL'> | null {
   const clean = dateStr.trim();
   const parts = clean.split('/');
   if (parts.length !== 3) return null;
@@ -60,11 +82,20 @@ export function getWeekNumberForDate(dateStr: string): Exclude<WeekFilter, 'ALL'
   }
 
   const ts = Date.UTC(year, month - 1, day);
-  if (ts >= Date.UTC(2026, 8, 28) && ts <= Date.UTC(2026, 9, 4)) return 40;
-  if (ts >= Date.UTC(2026, 9, 5) && ts <= Date.UTC(2026, 9, 11)) return 41;
-  if (ts >= Date.UTC(2026, 9, 12) && ts <= Date.UTC(2026, 9, 18)) return 42;
-  if (ts >= Date.UTC(2026, 9, 19) && ts <= Date.UTC(2026, 9, 25)) return 43;
-  if (ts >= Date.UTC(2026, 9, 26) && ts <= Date.UTC(2026, 10, 1)) return 44;
+  if (monthScope === 'nov2026') {
+    if (ts >= Date.UTC(2026, 10, 2) && ts <= Date.UTC(2026, 10, 8)) return 1;
+    if (ts >= Date.UTC(2026, 10, 9) && ts <= Date.UTC(2026, 10, 15)) return 2;
+    if (ts >= Date.UTC(2026, 10, 16) && ts <= Date.UTC(2026, 10, 22)) return 3;
+    if (ts >= Date.UTC(2026, 10, 23) && ts <= Date.UTC(2026, 10, 29)) return 4;
+    if (ts >= Date.UTC(2026, 10, 30) && ts <= Date.UTC(2026, 11, 6)) return 5;
+    return null;
+  }
+
+  if (ts >= Date.UTC(2026, 8, 28) && ts <= Date.UTC(2026, 9, 4)) return 1;
+  if (ts >= Date.UTC(2026, 9, 5) && ts <= Date.UTC(2026, 9, 11)) return 2;
+  if (ts >= Date.UTC(2026, 9, 12) && ts <= Date.UTC(2026, 9, 18)) return 3;
+  if (ts >= Date.UTC(2026, 9, 19) && ts <= Date.UTC(2026, 9, 25)) return 4;
+  if (ts >= Date.UTC(2026, 9, 26) && ts <= Date.UTC(2026, 10, 1)) return 5;
   return null;
 }
 
@@ -122,6 +153,20 @@ export interface ComputedOverviewStats {
   onHoldCount: number;
   billingDoneCount: number;
   billingPendingCount: number;
+  activeAchieveCount: number;
+  billingDoneA: number;
+  billingDoneB: number;
+  billingDoneOthers: number;
+  billingPendingActiveAll: number;
+  billingPendingActiveA: number;
+  billingPendingActiveBO: number;
+  catAActiveCount: number;
+  catAOnline: number;
+  catAOffline: number;
+  barcActiveCount: number;
+  barcOnline: number;
+  barcOffline: number;
+  videoPendingCount: number;
   videoYesCount: number;
   boxYesCount: number;
   totalReportedLandings: number;
@@ -140,7 +185,8 @@ export interface ComputedOverviewStats {
   activeWeekEstPayoutINR: number;
   activeWeekPendingVideos: number;
   weeklyMetrics: {
-    weekNumber: Exclude<WeekFilter, 'ALL'>;
+    weekSlot: Exclude<WeekFilter, 'ALL'>;
+    weekNumber: number;
     weekLabel: string;
     shortLabel: string;
     rangeLabel: string;
@@ -178,6 +224,7 @@ export interface ComputedOverviewStats {
   }[];
   stateStats: {
     state: string;
+    operators: string[];
     total: number;
     online: number;
     billingDone: number;
@@ -196,8 +243,10 @@ export interface ComputedOverviewStats {
 export function computeOverviewStats(
   records: MasterNetworkRecord[],
   selectedWeek: WeekFilter = 'ALL',
+  monthScope: MonthScope = 'oct2026',
 ): ComputedOverviewStats {
   const wkIdx = getWeekIndex(selectedWeek);
+  const weekOptions = getWeekOptionsForMonth(monthScope);
 
   let onlineCount = 0;
   let offlineCount = 0;
@@ -205,6 +254,20 @@ export function computeOverviewStats(
   let onHoldCount = 0;
   let billingDoneCount = 0;
   let billingPendingCount = 0;
+  let activeAchieveCount = 0;
+  let billingDoneA = 0;
+  let billingDoneB = 0;
+  let billingDoneOthers = 0;
+  let billingPendingActiveAll = 0;
+  let billingPendingActiveA = 0;
+  let billingPendingActiveBO = 0;
+  let catAActiveCount = 0;
+  let catAOnline = 0;
+  let catAOffline = 0;
+  let barcActiveCount = 0;
+  let barcOnline = 0;
+  let barcOffline = 0;
+  let videoPendingCount = 0;
   let videoYesCount = 0;
   let boxYesCount = 0;
   let totalReportedLandings = 0;
@@ -224,9 +287,10 @@ export function computeOverviewStats(
   let activeWeekEstPayoutINR = 0;
   let activeWeekPendingVideos = 0;
 
-  const weeklyMetrics = WEEK_OPTIONS.map((meta) => ({
-    weekNumber: meta.value,
-    weekLabel: meta.wkLabel,
+  const weeklyMetrics = weekOptions.map((meta) => ({
+    weekSlot: meta.value,
+    weekNumber: records[0]?.weeks[meta.index]?.weekNumber ?? meta.weekNumber,
+    weekLabel: `WK${records[0]?.weeks[meta.index]?.weekNumber ?? meta.weekNumber}`,
     shortLabel: meta.shortLabel,
     rangeLabel: records[0]?.weeks[meta.index]?.rangeLabel ?? meta.rangeLabel,
     boxOnlineNetworks: 0,
@@ -259,10 +323,37 @@ export function computeOverviewStats(
     else if (rec.type === 'SHUTDOWN') shutdownCount++;
     else onHoldCount++;
 
-    if (rec.asPerBilling === 'DONE') billingDoneCount++;
-    else billingPendingCount++;
+    if (rec.asPerBilling === 'DONE') {
+      billingDoneCount++;
+      if (rec.category === 'CATEGORY A') billingDoneA++;
+      else if (rec.category === 'CATEGORY B') billingDoneB++;
+      else billingDoneOthers++;
+    } else {
+      billingPendingCount++;
+    }
+
+    const isActiveType = rec.type === 'ONLINE' || rec.type === 'OFFLINE';
+    if (isActiveType) {
+      activeAchieveCount++;
+      if (rec.asPerBilling === 'PENDING') {
+        billingPendingActiveAll++;
+        if (rec.category === 'CATEGORY A') billingPendingActiveA++;
+        else billingPendingActiveBO++;
+      }
+      if (rec.category === 'CATEGORY A') {
+        catAActiveCount++;
+        if (rec.type === 'ONLINE') catAOnline++;
+        else catAOffline++;
+      }
+      if (rec.weekUpdate === 'BARC') {
+        barcActiveCount++;
+        if (rec.type === 'ONLINE') barcOnline++;
+        else barcOffline++;
+      }
+    }
 
     if (rec.videoStatus === 'YES') videoYesCount++;
+    else videoPendingCount++;
     if (rec.boxStatus === 'YES') boxYesCount++;
 
     if (rec.weekUpdate === 'BARC') barcCount++;
@@ -377,6 +468,7 @@ export function computeOverviewStats(
     if (!stEntry) {
       stEntry = {
         state: stKey,
+        operators: [],
         total: 0,
         online: 0,
         billingDone: 0,
@@ -387,6 +479,9 @@ export function computeOverviewStats(
         attainmentPct: 0,
       };
       stateMap.set(stKey, stEntry);
+    }
+    if (rec.operationName && !stEntry.operators.includes(rec.operationName)) {
+      stEntry.operators.push(rec.operationName);
     }
     stEntry.total++;
     if (rec.type === 'ONLINE') stEntry.online++;
@@ -436,6 +531,20 @@ export function computeOverviewStats(
     onHoldCount,
     billingDoneCount,
     billingPendingCount,
+    activeAchieveCount,
+    billingDoneA,
+    billingDoneB,
+    billingDoneOthers,
+    billingPendingActiveAll,
+    billingPendingActiveA,
+    billingPendingActiveBO,
+    catAActiveCount,
+    catAOnline,
+    catAOffline,
+    barcActiveCount,
+    barcOnline,
+    barcOffline,
+    videoPendingCount,
     videoYesCount,
     boxYesCount,
     totalReportedLandings,
@@ -463,8 +572,10 @@ export function computeOverviewStats(
 
 export function exportRecordsToCsv(
   records: MasterNetworkRecord[],
-  filename = 'network-tracker-export.csv',
+  monthScope: MonthScope = 'oct2026',
+  filename?: string,
 ): void {
+  const startWk = records[0]?.weeks[0]?.weekNumber ?? (monthScope === 'nov2026' ? 45 : 40);
   const headers = [
     'SR',
     'CODE',
@@ -476,16 +587,16 @@ export function exportRecordsToCsv(
     'WEEK UPDATE',
     'MACHINE NO',
     'Operation Name',
-    'W40 Box',
-    'W40 Videos',
-    'W41 Box',
-    'W41 Videos',
-    'W42 Box',
-    'W42 Videos',
-    'W43 Box',
-    'W43 Videos',
-    'W44 Box',
-    'W44 Videos',
+    `W${startWk} Box`,
+    `W${startWk} Videos`,
+    `W${startWk + 1} Box`,
+    `W${startWk + 1} Videos`,
+    `W${startWk + 2} Box`,
+    `W${startWk + 2} Videos`,
+    `W${startWk + 3} Box`,
+    `W${startWk + 3} Videos`,
+    `W${startWk + 4} Box`,
+    `W${startWk + 4} Videos`,
     'Total Reported',
     'Box Count',
     'Video Payment',
@@ -541,11 +652,17 @@ export function exportRecordsToCsv(
     lines.push(row.map(escapeCell).join(','));
   }
 
+  const resolvedFilename =
+    filename ??
+    (monthScope === 'nov2026'
+      ? 'november-2026-tracker-export.csv'
+      : 'october-2026-tracker-export.csv');
+
   const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = filename;
+  a.download = resolvedFilename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -579,7 +696,7 @@ export function exportDashboardSnapshotToCsv(
       barcOffline: number;
     }>;
   },
-  filename = 'november-2026-dashboard-summary.csv',
+  filename = 'dashboard-summary-export.csv',
 ): void {
   const headers = [
     'Markets',
@@ -669,4 +786,3 @@ export function exportDashboardSnapshotToCsv(
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
-

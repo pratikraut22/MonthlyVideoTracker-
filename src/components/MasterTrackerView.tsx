@@ -6,18 +6,20 @@ import {
   Download,
   ExternalLink,
 } from 'lucide-react';
-import type { MasterNetworkRecord, WeekFilter } from '../types/tracker';
+import type { MasterNetworkRecord, MonthScope, WeekFilter } from '../types/tracker';
 import {
   exportRecordsToCsv,
   formatCurrencyINR,
   getWeekIndex,
   getWeekMeta,
+  getWeekOptionsForMonth,
 } from '../utils/analytics';
 import { BillingIndicator, NetworkTypeIndicator } from './StatusText';
 
 interface MasterTrackerViewProps {
   records: MasterNetworkRecord[];
   selectedWeek: WeekFilter;
+  monthScope: MonthScope;
   onSelectRecord: (record: MasterNetworkRecord) => void;
   onResetFilters: () => void;
 }
@@ -36,6 +38,7 @@ type SortKey =
 export function MasterTrackerView({
   records,
   selectedWeek,
+  monthScope,
   onSelectRecord,
   onResetFilters,
 }: MasterTrackerViewProps) {
@@ -47,7 +50,9 @@ export function MasterTrackerView({
   const [pageSize, setPageSize] = useState(25);
 
   const weekIdx = getWeekIndex(selectedWeek);
-  const weekMeta = getWeekMeta(selectedWeek);
+  const weekMeta = getWeekMeta(selectedWeek, monthScope);
+  const weekOptions = getWeekOptionsForMonth(monthScope);
+  const weekRangeText = `${weekOptions[0].wkLabel.replace('WK', 'W')}–${weekOptions[4].wkLabel.replace('WK', 'W')}`;
 
   useEffect(() => {
     if (selectedWeek === 'ALL') {
@@ -136,7 +141,7 @@ export function MasterTrackerView({
                 },
                 {
                   id: 'weekly',
-                  label: weekMeta ? `${weekMeta.wkLabel} Video Log` : 'W40–W44 Logs',
+                  label: weekMeta ? `${weekMeta.wkLabel} Video Log` : `${weekRangeText} Logs`,
                 },
                 { id: 'billing', label: 'Billing & Payouts' },
               ] as const
@@ -201,7 +206,7 @@ export function MasterTrackerView({
 
           <button
             type="button"
-            onClick={() => exportRecordsToCsv(sortedRecords)}
+            onClick={() => exportRecordsToCsv(sortedRecords, monthScope)}
             disabled={sortedRecords.length === 0}
             className="h-8 px-3 inline-flex items-center gap-1.5 text-xs font-medium bg-slate-900 text-white rounded hover:bg-slate-800 disabled:opacity-40 whitespace-nowrap shrink-0 cursor-pointer"
           >
@@ -373,12 +378,12 @@ export function MasterTrackerView({
                         </th>
                       </>
                     ) : (
-                      [40, 41, 42, 43, 44].map((wk) => (
+                      weekOptions.map((wk) => (
                         <th
-                          key={wk}
+                          key={wk.weekNumber}
                           className="py-2.5 px-3 text-left font-medium whitespace-nowrap border-l border-slate-200"
                         >
-                          Week {wk} (Box · Vid · Date)
+                          Week {wk.weekNumber} (Box · Vid · Date)
                         </th>
                       ))
                     )}

@@ -1,6 +1,6 @@
 import { Calendar, Layers } from 'lucide-react';
 import type { MonthScope, WeekFilter } from '../types/tracker';
-import { WEEK_OPTIONS, getWeekMeta } from '../utils/analytics';
+import { getWeekMeta, getWeekOptionsForMonth } from '../utils/analytics';
 
 interface WeekSelectorBarProps {
   selectedWeek: WeekFilter;
@@ -8,9 +8,11 @@ interface WeekSelectorBarProps {
   monthScope: MonthScope;
   onSelectMonthScope: (scope: MonthScope) => void;
   hasNovember: boolean;
-  hasMaster: boolean;
+  hasOctober: boolean;
+  novCount?: number;
+  octCount?: number;
   novActiveWeekHint?: string;
-  masterCount: number;
+  cycleRangeLabel?: string;
 }
 
 export function WeekSelectorBar({
@@ -19,17 +21,24 @@ export function WeekSelectorBar({
   monthScope,
   onSelectMonthScope,
   hasNovember,
-  hasMaster,
+  hasOctober,
+  novCount = 0,
+  octCount = 0,
   novActiveWeekHint = 'W3',
-  masterCount,
+  cycleRangeLabel,
 }: WeekSelectorBarProps) {
-  const activeMeta = getWeekMeta(selectedWeek);
-  const isNov = monthScope === 'nov2026' && hasNovember;
+  const weekOptions = getWeekOptionsForMonth(monthScope);
+  const activeMeta = getWeekMeta(selectedWeek, monthScope);
+  const isNov = monthScope === 'nov2026';
+
+  const fallbackRange = isNov
+    ? 'Nov 2 – Dec 6, 2026 (35 days)'
+    : 'Sep 28 – Nov 1, 2026 (35 days)';
 
   return (
     <div className="bg-white border border-slate-200 rounded-lg px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-3">
       <div className="flex flex-wrap items-center gap-3">
-        {hasNovember && hasMaster && (
+        {hasNovember && hasOctober && (
           <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 whitespace-nowrap shrink-0">
               <Layers className="w-3.5 h-3.5 text-emerald-600" />
@@ -51,7 +60,7 @@ export function WeekSelectorBar({
               >
                 Nov 2026{' '}
                 <span className={isNov ? 'text-emerald-300 font-mono' : 'text-slate-400 font-mono'}>
-                  · {novActiveWeekHint}
+                  · {novCount}
                 </span>
               </button>
               <button
@@ -65,7 +74,7 @@ export function WeekSelectorBar({
               >
                 Oct 2026{' '}
                 <span className={!isNov ? 'text-slate-300 font-mono' : 'text-slate-400 font-mono'}>
-                  · {masterCount}
+                  · {octCount}
                 </span>
               </button>
             </div>
@@ -92,10 +101,10 @@ export function WeekSelectorBar({
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              {isNov ? `All (${novActiveWeekHint})` : 'All Weeks (W1–W5)'}
+              All Weeks (W1–W5)
             </button>
 
-            {WEEK_OPTIONS.map((wk) => {
+            {weekOptions.map((wk) => {
               const active = selectedWeek === wk.value;
               const isFutureNovWeek = isNov && wk.index >= 3;
               return (
@@ -112,12 +121,10 @@ export function WeekSelectorBar({
                   }`}
                 >
                   <span className="font-mono">{wk.shortLabel}</span>
-                  {!isNov && (
-                    <span className={active ? 'text-slate-300' : 'text-slate-400'}>
-                      {' '}
-                      · {wk.wkLabel}
-                    </span>
-                  )}
+                  <span className={active ? 'text-slate-300' : 'text-slate-400'}>
+                    {' '}
+                    · {wk.wkLabel}
+                  </span>
                 </button>
               );
             })}
@@ -126,21 +133,17 @@ export function WeekSelectorBar({
       </div>
 
       <div className="text-xs font-mono tabular-nums text-slate-500 whitespace-nowrap">
-        {isNov ? (
-          activeMeta ? (
-            <span>
-              Nov 2026 Focus: <strong className="text-slate-900">{activeMeta.shortLabel}</strong>
-              {activeMeta.index >= 3 ? ' (Upcoming · 0 recorded)' : ' (Active)'}
-            </span>
-          ) : (
-            <span>November 2026 · W1–{novActiveWeekHint} Active Cycle</span>
-          )
-        ) : activeMeta ? (
+        {activeMeta ? (
           <span>
-            Active Window: <strong className="text-slate-900">{activeMeta.rangeLabel}, 2026</strong>
+            Active Window:{' '}
+            <strong className="text-slate-900">{activeMeta.rangeLabel}, 2026</strong>
+            {isNov && activeMeta.index >= 3 ? ' (Upcoming)' : ''}
           </span>
         ) : (
-          <span>Full Cycle: Sep 28 – Nov 1, 2026 (35 days)</span>
+          <span>
+            Full Cycle: {cycleRangeLabel || fallbackRange}
+            {isNov && novActiveWeekHint ? ` · ${novActiveWeekHint} Live` : ''}
+          </span>
         )}
       </div>
     </div>

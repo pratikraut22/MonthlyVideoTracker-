@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, ExternalLink, IndianRupee } from 'lucide-react';
-import type { MasterNetworkRecord, WeekFilter } from '../types/tracker';
+import type { MasterNetworkRecord, MonthScope, WeekFilter } from '../types/tracker';
 import {
   type ComputedOverviewStats,
   formatCurrencyINR,
   formatNumber,
   getWeekIndex,
   getWeekMeta,
+  getWeekOptionsForMonth,
 } from '../utils/analytics';
 import { BillingIndicator, NetworkTypeIndicator } from './StatusText';
 
@@ -14,6 +15,7 @@ interface BillingExceptionsViewProps {
   records: MasterNetworkRecord[];
   stats: ComputedOverviewStats;
   selectedWeek: WeekFilter;
+  monthScope: MonthScope;
   onSelectRecord: (record: MasterNetworkRecord) => void;
 }
 
@@ -23,13 +25,16 @@ export function BillingExceptionsView({
   records,
   stats,
   selectedWeek,
+  monthScope,
   onSelectRecord,
 }: BillingExceptionsViewProps) {
   const [scope, setScope] = useState<AuditScope>('pending_billing');
   const [selectedRemark, setSelectedRemark] = useState<string>('ALL');
 
   const weekIdx = getWeekIndex(selectedWeek);
-  const weekMeta = getWeekMeta(selectedWeek);
+  const weekMeta = getWeekMeta(selectedWeek, monthScope);
+  const weekOpts = getWeekOptionsForMonth(monthScope);
+  const cycleWkLabel = `${weekOpts[0].wkLabel} – ${weekOpts[4].wkLabel}`;
 
   const notToPayCount = useMemo(
     () =>
@@ -178,7 +183,7 @@ export function BillingExceptionsView({
           <div className="flex items-center justify-between mb-3">
             <div>
               <h2 className="text-sm font-semibold text-slate-900">
-                Top Remark & Exception Tags ({weekMeta ? weekMeta.wkLabel : 'WK40 – WK44'})
+                Top Remark & Exception Tags ({weekMeta ? weekMeta.wkLabel : cycleWkLabel})
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
                 Click any remark label to filter the audit ledger below
