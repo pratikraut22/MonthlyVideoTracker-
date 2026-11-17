@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { ExternalLink, Search, Users } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Check, ChevronDown, ExternalLink, Search, Users } from 'lucide-react';
 import type {
   DashboardOperatorSummary,
   MasterNetworkRecord,
@@ -40,14 +40,41 @@ export function OperatorQueuesView({
     'pending_sheet',
   );
   const [weekStatusFilter, setWeekStatusFilter] = useState<'all' | 'done' | 'missing'>('all');
+  const [opMenuOpen, setOpMenuOpen] = useState(false);
+  const opMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!opMenuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (opMenuRef.current && !opMenuRef.current.contains(e.target as Node)) {
+        setOpMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [opMenuOpen]);
 
   const weekIdx = getWeekIndex(selectedWeek);
   const weekMeta = getWeekMeta(selectedWeek, monthScope);
 
   const queueKeys = useMemo(() => {
-    const keys = Object.keys(operatorQueues).sort();
+    const keys = Object.keys(operatorQueues)
+      .filter((op) => op !== 'SHUTDOWN')
+      .sort();
     const extraOps = Array.from(
-      new Set(masterRecords.map((r) => r.operationName).filter(Boolean)),
+      new Set(
+        masterRecords
+          .filter((r) => r.type !== 'SHUTDOWN')
+          .map((r) => r.operationName)
+          .filter((op) => Boolean(op) && op !== 'SHUTDOWN'),
+      ),
     )
       .filter((op) => !keys.includes(op))
       .sort();
@@ -68,11 +95,24 @@ export function OperatorQueuesView({
   }, [masterRecords]);
 
   const opMasterRecords = useMemo(
-    () => masterRecords.filter((r) => r.operationName === activeOp),
+    () =>
+      masterRecords.filter(
+        (r) => r.operationName === activeOp && r.type !== 'SHUTDOWN',
+      ),
     [masterRecords, activeOp],
   );
 
-  const pendingSheetRows = operatorQueues[activeOp] ?? [];
+  const pendingSheetRows = useMemo(
+    () =>
+      (operatorQueues[activeOp] ?? []).filter((item) => {
+        if (item.weekUpdate === 'SHUTDOWN') return false;
+        const matched =
+          masterByCode.get(`${item.code}::${item.networkName}`) ??
+          masterByCode.get(item.code);
+        return matched?.type !== 'SHUTDOWN';
+      }),
+    [operatorQueues, activeOp, masterByCode],
+  );
 
   const dashSummary = useMemo(
     () => dashboardOperators.find((d) => d.operationName === activeOp),
@@ -130,7 +170,7 @@ export function OperatorQueuesView({
   const visiblePendingRows = useMemo(() => {
     return pendingSheetRows.filter((item) => {
       if (q) {
-        const hay = `${item.code} ${item.networkName} ${item.city} ${item.state} ${item.weekUpdate}`.toLowerCase();
+        const hay = `${item.code} ${item.networkName} ${item.city} ${item.state} ${item.weekUpdate} ${item.operationName}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       if (weekIdx !== null && weekStatusFilter !== 'all') {
@@ -148,7 +188,7 @@ export function OperatorQueuesView({
   const visibleMasterRows = useMemo(() => {
     return opMasterRecords.filter((item) => {
       if (q) {
-        const hay = `${item.code} ${item.networkName} ${item.city} ${item.state} ${item.machineNo}`.toLowerCase();
+        const hay = `${item.code} ${item.networkName} ${item.city} ${item.state} ${item.machineNo} ${item.operationName}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       if (weekIdx !== null && weekStatusFilter !== 'all') {
@@ -165,44 +205,83 @@ export function OperatorQueuesView({
 
   return (
     <div className="space-y-5">
-      <div className="bg-white border border-slate-200 rounded-lg p-3.5">
-        <div className="flex items-center justify-between gap-3 mb-2.5">
-          <div className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-            <Users className="w-4 h-4 text-slate-500" />
-            Select Operator Worksheet
+      <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200/70 flex items-center justify-center shrink-0">
+            <Users className="w-4 h-4 text-blue-600" />
           </div>
-          <span className="text-xs font-mono text-slate-500 tabular-nums">
-            {Object.keys(operatorQueues).length} pending sheets · {queueKeys.length} total operators
-          </span>
+          <div className="text-xs font-semibold text-slate-800">
+            Operator
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          {queueKeys.map((op) => {
-            const qCount = operatorQueues[op]?.length ?? 0;
-            const mCount = masterRecords.filter((r) => r.operationName === op).length;
-            const active = op === activeOp;
-            return (
-              <button
-                key={op}
-                type="button"
-                onClick={() => onSelectOperator(op)}
-                className={`px-2.5 py-1.5 text-xs font-medium rounded border whitespace-nowrap shrink-0 cursor-pointer transition-colors ${
-                  active
-                    ? 'bg-slate-900 text-white border-slate-900'
-                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                <span>{op}</span>{' '}
-                <span
-                  className={`font-mono tabular-nums text-[11px] ${
-                    active ? 'text-slate-300' : 'text-slate-400'
-                  }`}
-                >
-                  {qCount > 0 ? `${qCount}q` : `${mCount}m`}
-                </span>
-              </button>
-            );
-          })}
+        <div className="relative" ref={opMenuRef}>
+          <button
+            type="button"
+            onClick={() => setOpMenuOpen((o) => !o)}
+            aria-expanded={opMenuOpen}
+            aria-haspopup="listbox"
+            className="h-9 min-w-[230px] px-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg inline-flex items-center justify-between gap-3 text-xs font-medium text-slate-900 cursor-pointer transition-colors"
+          >
+            <span className="inline-flex items-center gap-2">
+              <span className="font-semibold text-slate-900">{activeOp}</span>
+              <span className="font-mono tabular-nums text-[11px] text-slate-500">
+                {pendingSheetRows.length > 0
+                  ? `${pendingSheetRows.length}q`
+                  : `${opMasterRecords.length}m`}
+              </span>
+            </span>
+            <ChevronDown
+              className={`w-4 h-4 text-slate-400 transition-transform ${
+                opMenuOpen ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
+
+          {opMenuOpen && (
+            <div
+              role="listbox"
+              aria-label="Select operator"
+              className="absolute right-0 mt-1.5 w-64 max-h-72 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg z-30 py-1 divide-y divide-slate-100"
+            >
+              {queueKeys.map((op) => {
+                const qCount = operatorQueues[op]?.length ?? 0;
+                const mCount = masterRecords.filter(
+                  (r) => r.operationName === op && r.type !== 'SHUTDOWN',
+                ).length;
+                const active = op === activeOp;
+                return (
+                  <button
+                    key={op}
+                    type="button"
+                    role="option"
+                    aria-selected={active}
+                    onClick={() => {
+                      onSelectOperator(op);
+                      setOpMenuOpen(false);
+                    }}
+                    className={`w-full px-3 py-2 text-left text-xs flex items-center justify-between gap-2 cursor-pointer transition-colors ${
+                      active
+                        ? 'bg-blue-50 text-blue-800 font-semibold'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <Check
+                        className={`w-3.5 h-3.5 ${
+                          active ? 'text-blue-600 opacity-100' : 'opacity-0'
+                        }`}
+                      />
+                      <span>{op}</span>
+                    </span>
+                    <span className="font-mono tabular-nums text-[11px] text-slate-500">
+                      {qCount > 0 ? `${qCount}q · ${mCount}m` : `${mCount}m`}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 

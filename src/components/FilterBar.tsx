@@ -21,8 +21,6 @@ const TYPE_OPTIONS: Array<{ value: 'ALL' | NetworkType; label: string }> = [
   { value: 'ALL', label: 'All' },
   { value: 'ONLINE', label: 'Online' },
   { value: 'OFFLINE', label: 'Offline' },
-  { value: 'SHUTDOWN', label: 'Shutdown' },
-  { value: 'ON HOLD', label: 'On Hold' },
 ];
 
 export function FilterBar({

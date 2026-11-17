@@ -188,7 +188,6 @@ export function OverviewView({
   const billingPendingActivePct =
     Math.round((stats.billingPendingActiveAll / achieveDenom) * 1000) / 10;
   const catAPct = Math.round((stats.catAActiveCount / achieveDenom) * 100);
-  const barcPct = Math.round((stats.barcActiveCount / achieveDenom) * 100);
   const videoPendingPct =
     stats.totalNetworks > 0
       ? Math.round((stats.videoPendingCount / stats.totalNetworks) * 100)
@@ -198,9 +197,8 @@ export function OverviewView({
   const maxWeeklyVal = Math.max(
     1,
     ...stats.weeklyMetrics.flatMap((w) => [
-      w.boxOnlineNetworks,
       w.videosSubmitted,
-      w.barcVideos,
+      w.boxOnlineNetworks,
     ]),
   );
 
@@ -306,7 +304,7 @@ export function OverviewView({
             <div>
               <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-blue-600" />
-                Weekly Attainment Trajectory ({wkRangeTitle})
+                Weekly Videos & On Network Report ({wkRangeTitle})
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
                 Click any week column to focus the entire dashboard on that week
@@ -314,16 +312,12 @@ export function OverviewView({
             </div>
             <div className="flex items-center gap-4 text-xs text-slate-600">
               <span className="inline-flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 bg-slate-800 rounded-xs inline-block" />
-                Box Active
-              </span>
-              <span className="inline-flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 bg-blue-600 rounded-xs inline-block" />
                 Videos
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 bg-emerald-600 rounded-xs inline-block" />
-                BARC
+                On Network Report
               </span>
             </div>
           </div>
@@ -333,10 +327,10 @@ export function OverviewView({
               viewBox="0 0 600 220"
               className="w-full h-full overflow-visible"
               role="img"
-              aria-label="Weekly box and video attainment chart"
+              aria-label="Weekly videos and on network report chart"
             >
               {[0, 0.25, 0.5, 0.75, 1].map((tick) => {
-                const y = 180 - tick * 150;
+                const y = 180 - tick * 145;
                 const val = Math.round(tick * maxWeeklyVal);
                 return (
                   <g key={tick}>
@@ -361,14 +355,15 @@ export function OverviewView({
               })}
 
               {stats.weeklyMetrics.map((wk, idx) => {
-                const groupX = 68 + idx * 104;
-                const barW = 22;
-                const boxH = (wk.boxOnlineNetworks / maxWeeklyVal) * 150;
-                const vidH = (wk.videosSubmitted / maxWeeklyVal) * 150;
-                const barcH = (wk.barcVideos / maxWeeklyVal) * 150;
+                const groupX = 74 + idx * 104;
+                const barW = 28;
+                const gap = 8;
+                const vidH = (wk.videosSubmitted / maxWeeklyVal) * 145;
+                const onNetH = (wk.boxOnlineNetworks / maxWeeklyVal) * 145;
                 const isHovered = hoveredWeek === idx;
                 const isSelected = filters.week === wk.weekSlot;
                 const isDimmed = selectedWeekIdx !== null && !isSelected;
+                const centerX = groupX + barW + gap / 2;
 
                 return (
                   <g
@@ -386,10 +381,10 @@ export function OverviewView({
                   >
                     {(isHovered || isSelected) && (
                       <rect
-                        x={groupX - 10}
-                        y={20}
-                        width={92}
-                        height={165}
+                        x={groupX - 12}
+                        y={16}
+                        width={barW * 2 + gap + 24}
+                        height={169}
                         rx={4}
                         fill={isSelected ? '#EFF6FF' : '#F1F5F9'}
                         stroke={isSelected ? '#BFDBFE' : undefined}
@@ -397,30 +392,42 @@ export function OverviewView({
                     )}
                     <rect
                       x={groupX}
-                      y={180 - boxH}
-                      width={barW}
-                      height={Math.max(boxH, 2)}
-                      rx={2}
-                      fill="#1E293B"
-                    />
-                    <rect
-                      x={groupX + barW + 4}
                       y={180 - vidH}
                       width={barW}
                       height={Math.max(vidH, 2)}
                       rx={2}
                       fill="#2563EB"
                     />
+                    {wk.videosSubmitted > 0 && (
+                      <text
+                        x={groupX + barW / 2}
+                        y={180 - vidH - 5}
+                        textAnchor="middle"
+                        className="fill-blue-700 text-[10px] font-semibold font-mono"
+                      >
+                        {wk.videosSubmitted}
+                      </text>
+                    )}
                     <rect
-                      x={groupX + (barW + 4) * 2}
-                      y={180 - barcH}
+                      x={groupX + barW + gap}
+                      y={180 - onNetH}
                       width={barW}
-                      height={Math.max(barcH, 2)}
+                      height={Math.max(onNetH, 2)}
                       rx={2}
                       fill="#16A34A"
                     />
+                    {wk.boxOnlineNetworks > 0 && (
+                      <text
+                        x={groupX + barW + gap + barW / 2}
+                        y={180 - onNetH - 5}
+                        textAnchor="middle"
+                        className="fill-emerald-700 text-[10px] font-semibold font-mono"
+                      >
+                        {wk.boxOnlineNetworks}
+                      </text>
+                    )}
                     <text
-                      x={groupX + 37}
+                      x={centerX}
                       y={198}
                       textAnchor="middle"
                       className={`text-[11px] font-semibold font-mono ${
@@ -430,7 +437,7 @@ export function OverviewView({
                       {wk.shortLabel} · {wk.weekLabel}
                     </text>
                     <text
-                      x={groupX + 37}
+                      x={centerX}
                       y={212}
                       textAnchor="middle"
                       className="fill-slate-400 text-[9px]"
@@ -450,13 +457,10 @@ export function OverviewView({
                   {stats.weeklyMetrics[hoveredWeek].rangeLabel})
                 </div>
                 <div>
-                  Box Active: {stats.weeklyMetrics[hoveredWeek].boxOnlineNetworks}
-                </div>
-                <div>
                   Videos: {stats.weeklyMetrics[hoveredWeek].videosSubmitted}
                 </div>
                 <div>
-                  BARC Videos: {stats.weeklyMetrics[hoveredWeek].barcVideos}
+                  On Network Report: {stats.weeklyMetrics[hoveredWeek].boxOnlineNetworks}
                 </div>
               </div>
             )}
@@ -563,35 +567,6 @@ export function OverviewView({
                 </div>
                 <div className="text-[11px] font-mono text-slate-400 mt-0.5">
                   {stats.catAOnline} ON · {stats.catAOffline} OFF
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  onUpdateFilters({
-                    ...filters,
-                    program: filters.program === 'BARC' ? 'ALL' : 'BARC',
-                  })
-                }
-                className={`w-full text-left cursor-pointer rounded p-1 -m-1 transition-colors ${
-                  filters.program === 'BARC' ? 'bg-blue-50' : 'hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="font-medium text-slate-800">BARC Networks</span>
-                  <span className="font-mono tabular-nums text-slate-700">
-                    {formatNumber(stats.barcActiveCount)} ({barcPct}%)
-                  </span>
-                </div>
-                <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-600 transition-all"
-                    style={{ width: `${Math.min(100, barcPct)}%` }}
-                  />
-                </div>
-                <div className="text-[11px] font-mono text-slate-400 mt-0.5">
-                  {stats.barcOnline} ON · {stats.barcOffline} OFF
                 </div>
               </button>
 
@@ -778,27 +753,31 @@ export function OverviewView({
                       {completedCount}/{st.total}{' '}
                       <strong
                         className={
-                          st.attainmentPct >= 50
-                            ? 'text-emerald-700'
-                            : st.attainmentPct >= 25
-                              ? 'text-amber-700'
-                              : 'text-slate-600'
+                          st.attainmentPct < 40
+                            ? 'text-red-600'
+                            : st.attainmentPct >= 50
+                              ? 'text-emerald-700'
+                              : 'text-amber-700'
                         }
                       >
                         {st.attainmentPct}%
                       </strong>
                     </span>
                   </div>
-                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-1.5 w-full rounded-full overflow-hidden ${
+                      st.attainmentPct < 40 && !active ? 'bg-red-100' : 'bg-slate-100'
+                    }`}
+                  >
                     <div
                       className={`h-full transition-all ${
                         active
                           ? 'bg-blue-600'
-                          : st.attainmentPct >= 50
-                            ? 'bg-emerald-600'
-                            : st.attainmentPct >= 25
-                              ? 'bg-amber-500'
-                              : 'bg-slate-400'
+                          : st.attainmentPct < 40
+                            ? 'bg-red-600'
+                            : st.attainmentPct >= 50
+                              ? 'bg-emerald-600'
+                              : 'bg-amber-500'
                       }`}
                       style={{ width: `${Math.min(100, st.attainmentPct)}%` }}
                     />

@@ -31,17 +31,17 @@ const OCT_OPERATOR_SHEETS: Record<string, string> = {
 };
 
 const NOV_OPERATOR_SHEETS: Record<string, string> = {
-  ARBIND: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-ARBIND_44c8fd42.csv',
-  CHIRAG: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-CHIRAG_08074ecc.csv',
+  ARBIND: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-ARBIND_39497c0a.csv',
+  CHIRAG: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-CHIRAG_61336fdd.csv',
   MUKESH: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-MUKESH_e4af53a0.csv',
-  NARENDRA: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-NARENDRA_642a37b5.csv',
-  NITIN: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-NITIN_721fc065.csv',
-  SAI: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SAI_7965ebc0.csv',
-  SAMEER: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SAMEER_08c1ad15.csv',
-  SANDEEP: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SANDEEP_2bdd616d.csv',
-  SHIVA: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SHIVA_320cbabf.csv',
-  STALIN: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-STALIN_d45b23ee.csv',
-  SUNIL: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SUNIL_c894d7f3.csv',
+  NARENDRA: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-NARENDRA_cf0b7b30.csv',
+  NITIN: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-NITIN_48d02c24.csv',
+  SAI: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SAI_ee41609a.csv',
+  SAMEER: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SAMEER_969968e8.csv',
+  SANDEEP: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SANDEEP_64c5eccd.csv',
+  SHIVA: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SHIVA_8f5efff6.csv',
+  STALIN: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-STALIN_e19f3f2f.csv',
+  SUNIL: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SUNIL_e5d53fc9.csv',
   VARUN: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-VARUN_b8f1beb5.csv',
   VINIT: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-VINIT_8a8f159b.csv',
 };
@@ -56,9 +56,9 @@ const OCT_SONY_URL =
   '/assets/aistudio/Monthly_Video_Tracker_-October_2026_-_Landing-SONY_ACTIVITY_2e80cf36.csv';
 
 const NOV_MASTER_URL =
-  '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-Master_d53e570d.csv';
+  '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-Master_a8a1509e.csv';
 const NOV_DASHBOARD_URL =
-  '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-DASHBOARD_9ab0661e.csv';
+  '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-DASHBOARD_edc5e756.csv';
 const NOV_DTH_URL =
   '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-DTH_2cca53b3.csv';
 const NOV_SONY_URL =
@@ -327,7 +327,9 @@ export function parseMasterGrid(rows: string[][]): {
     const isNotToPay =
       isExcludedAirtel || budgetLabel.toLowerCase().includes('not to pay') || budget <= 0;
     const baseAmountToPay = isExcludedAirtel ? 0 : parseNum(row[90]);
+    const videoPayment = parseNum(row[83]);
     const videoWeeksCount = weeks.filter((w) => w.videoCount > 0).length;
+    const hasVideo = videoPayment > 0 || videoWeeksCount > 0;
     const isFourWeekBonus = !isNotToPay && videoWeeksCount >= 4;
     const finalAmountToPay = isNotToPay
       ? 0
@@ -352,11 +354,11 @@ export function parseMasterGrid(rows: string[][]): {
       weeks,
       totalReported: parseNum(row[81]),
       boxCount: parseNum(row[82]),
-      videoPayment: parseNum(row[83]),
+      videoPayment,
       videoBilling: parseNum(row[84]),
       videoStatus: videoStatusRaw === 'YES' ? 'YES' : 'PENDING',
       boxStatus: boxStatusRaw === 'YES' ? 'YES' : 'PENDING',
-      asPerBilling: (billingRaw === 'DONE' ? 'DONE' : 'PENDING') as BillingStatus,
+      asPerBilling: (billingRaw === 'DONE' || hasVideo ? 'DONE' : 'PENDING') as BillingStatus,
       budget,
       budgetLabel: budgetLabel || '15',
       baseAmountToPay,

@@ -15,6 +15,20 @@ interface DthSonyViewProps {
   monthScope: MonthScope;
 }
 
+function formatDthDateDMY(dateStr: string): string {
+  const parts = dateStr.trim().split('/');
+  if (parts.length !== 3) return dateStr.trim();
+  const p0 = Number(parts[0]);
+  const p1 = Number(parts[1]);
+  const year = parts[2].trim();
+  if (!Number.isFinite(p0) || !Number.isFinite(p1) || !year) {
+    return dateStr.trim();
+  }
+  const day = p0 > 12 ? p0 : p1;
+  const month = p0 > 12 ? p1 : p0;
+  return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+}
+
 export function DthSonyView({
   dthLogs,
   sonyDates,
@@ -85,7 +99,8 @@ export function DthSonyView({
     return weekScopedDth.filter((row) => {
       if (dthOp !== 'ALL' && row.operator !== dthOp) return false;
       if (q) {
-        const hay = `${row.date} ${row.networkName} ${row.operator} ${row.rawAmount}`.toLowerCase();
+        const dmyDate = formatDthDateDMY(row.date);
+        const hay = `${dmyDate} ${row.date} ${row.networkName} ${row.operator} ${row.rawAmount}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -259,7 +274,7 @@ export function DthSonyView({
                   {filteredDth.map((row) => (
                     <tr key={row.id} className="hover:bg-slate-50">
                       <td className="py-2 px-4 font-mono tabular-nums text-slate-600 whitespace-nowrap">
-                        {row.date}
+                        {formatDthDateDMY(row.date)}
                       </td>
                       <td className="py-2 px-3 font-medium text-slate-900">
                         {row.networkName}
