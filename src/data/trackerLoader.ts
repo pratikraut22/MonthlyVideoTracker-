@@ -303,19 +303,25 @@ export function parseMasterGrid(rows: string[][]): {
     const billingRaw = cleanStr(row[88]).toUpperCase();
     const budgetLabel = cleanStr(row[89]);
 
+    const type = normalizeType(cleanStr(row[6]));
+    const category = normalizeCategory(cleanStr(row[7]));
+    const weekUpdate = normalizeProgram(cleanStr(row[8]));
+    const operationName = cleanStr(row[10]).toUpperCase();
+    const finalOperationName =
+      cleanStr(row[87]).toUpperCase() || operationName;
+
     records.push({
       sr,
       code: cleanStr(row[1]) || cleanStr(row[4]),
       state: cleanStr(row[2]).toUpperCase(),
       city: cleanStr(row[3]),
       networkName,
-      type: normalizeType(cleanStr(row[6])),
-      category: normalizeCategory(cleanStr(row[7])),
-      weekUpdate: normalizeProgram(cleanStr(row[8])),
+      type,
+      category,
+      weekUpdate,
       machineNo: cleanStr(row[9]),
-      operationName: cleanStr(row[10]).toUpperCase(),
-      finalOperationName:
-        cleanStr(row[87]).toUpperCase() || cleanStr(row[10]).toUpperCase(),
+      operationName,
+      finalOperationName,
       daily,
       totalOnDays,
       weeks,

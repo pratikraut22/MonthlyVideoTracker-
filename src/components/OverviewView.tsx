@@ -29,6 +29,7 @@ interface OverviewViewProps {
   monthScope: MonthScope;
   cycleRangeLabel?: string;
   comparisonTotals?: DashboardDataSnapshot['totals'];
+  comparisonRosterCount?: number;
   onUpdateFilters: (next: TrackerFilters) => void;
   onJumpToMaster: () => void;
   onJumpToOperatorQueue: (op: string) => void;
@@ -52,6 +53,7 @@ export function OverviewView({
   monthScope,
   cycleRangeLabel,
   comparisonTotals,
+  comparisonRosterCount,
   onUpdateFilters,
   onJumpToMaster,
   onJumpToOperatorQueue,
@@ -836,7 +838,7 @@ export function OverviewView({
                   },
                   {
                     label: 'Total Master Roster',
-                    other: comparisonTotals.videoTotalNetworks,
+                    other: comparisonRosterCount ?? comparisonTotals.videoTotalNetworks,
                     current: stats.totalNetworks,
                   },
                 ].map((row) => {

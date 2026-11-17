@@ -131,14 +131,15 @@ export default function App() {
   const effectiveMonthScope: MonthScope =
     activeMonthWorkbook?.monthScope ?? monthScope;
 
-  const comparisonTotals = useMemo(() => {
+  const comparisonWorkbook = useMemo(() => {
     if (!workbook || !activeMonthWorkbook) return null;
-    const other =
-      activeMonthWorkbook.monthScope === 'nov2026'
-        ? workbook.oct2026
-        : workbook.nov2026;
-    return other?.dashboardTotals ?? null;
+    return activeMonthWorkbook.monthScope === 'nov2026'
+      ? workbook.oct2026
+      : workbook.nov2026;
   }, [workbook, activeMonthWorkbook]);
+
+  const comparisonTotals = comparisonWorkbook?.dashboardTotals ?? null;
+  const comparisonRosterCount = comparisonWorkbook?.masterRecords.length;
 
   const operators = useMemo(() => {
     if (!activeMonthWorkbook) return [];
@@ -496,6 +497,7 @@ export default function App() {
                   monthScope={effectiveMonthScope}
                   cycleRangeLabel={activeMonthWorkbook.cycleRangeLabel}
                   comparisonTotals={comparisonTotals}
+                  comparisonRosterCount={comparisonRosterCount}
                   onUpdateFilters={setFilters}
                   onJumpToMaster={() => setActiveTab('master')}
                   onJumpToOperatorQueue={handleJumpToOperatorQueue}
