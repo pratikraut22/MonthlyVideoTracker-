@@ -50,9 +50,9 @@ const NAV_ITEMS: Array<{
   label: string;
   icon: typeof LayoutDashboard;
 }> = [
-  { id: 'overview', label: 'Executive Overview', icon: LayoutDashboard },
+  { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'master', label: 'Master Tracker', icon: Table2 },
-  { id: 'operators', label: 'Operator Queues', icon: Users },
+  { id: 'operators', label: 'Operator', icon: Users },
   { id: 'pending', label: 'Pending', icon: ListFilter },
   { id: 'billing', label: 'Billing & Exceptions', icon: IndianRupee },
   { id: 'dth', label: 'DTH & Sony Activity', icon: Tv },
@@ -495,15 +495,19 @@ export default function App() {
               {activeTab === 'overview' && (
                 <OverviewView
                   stats={overviewStats}
+                  records={filteredRecords}
                   dashboardOperators={activeMonthWorkbook.dashboardOperators}
                   filters={filters}
                   monthScope={effectiveMonthScope}
                   cycleRangeLabel={activeMonthWorkbook.cycleRangeLabel}
                   comparisonTotals={comparisonTotals}
                   comparisonRosterCount={comparisonRosterCount}
+                  comparisonRecords={comparisonWorkbook?.masterRecords}
+                  comparisonMonthScope={comparisonWorkbook?.monthScope}
                   onUpdateFilters={setFilters}
                   onJumpToMaster={() => setActiveTab('master')}
                   onJumpToOperatorQueue={handleJumpToOperatorQueue}
+                  onSelectRecord={setInspectedRecord}
                 />
               )}
 
@@ -566,6 +570,7 @@ export default function App() {
 
       <NetworkDrawer
         record={inspectedRecord}
+        monthScope={effectiveMonthScope}
         onClose={() => setInspectedRecord(null)}
       />
     </div>

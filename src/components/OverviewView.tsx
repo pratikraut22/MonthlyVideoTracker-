@@ -10,6 +10,7 @@ import {
 import type {
   DashboardDataSnapshot,
   DashboardOperatorSummary,
+  MasterNetworkRecord,
   MonthScope,
   TrackerFilters,
 } from '../types/tracker';
@@ -21,18 +22,23 @@ import {
   getWeekMeta,
   getWeekOptionsForMonth,
 } from '../utils/analytics';
+import { LastVideoSection } from './LastVideoSection';
 
 interface OverviewViewProps {
   stats: ComputedOverviewStats;
+  records: MasterNetworkRecord[];
   dashboardOperators: DashboardOperatorSummary[];
   filters: TrackerFilters;
   monthScope: MonthScope;
   cycleRangeLabel?: string;
   comparisonTotals?: DashboardDataSnapshot['totals'];
   comparisonRosterCount?: number;
+  comparisonRecords?: MasterNetworkRecord[];
+  comparisonMonthScope?: MonthScope;
   onUpdateFilters: (next: TrackerFilters) => void;
   onJumpToMaster: () => void;
   onJumpToOperatorQueue: (op: string) => void;
+  onSelectRecord: (record: MasterNetworkRecord) => void;
 }
 
 type OpSortKey =
@@ -48,15 +54,19 @@ type OpSortKey =
 
 export function OverviewView({
   stats,
+  records,
   dashboardOperators,
   filters,
   monthScope,
   cycleRangeLabel,
   comparisonTotals,
   comparisonRosterCount,
+  comparisonRecords,
+  comparisonMonthScope,
   onUpdateFilters,
   onJumpToMaster,
   onJumpToOperatorQueue,
+  onSelectRecord,
 }: OverviewViewProps) {
   const [hoveredWeek, setHoveredWeek] = useState<number | null>(null);
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
@@ -1096,6 +1106,15 @@ export function OverviewView({
           </table>
         </div>
       </section>
+
+      <LastVideoSection
+        records={records}
+        comparisonRecords={comparisonRecords}
+        comparisonMonthScope={comparisonMonthScope}
+        selectedWeek={filters.week}
+        monthScope={monthScope}
+        onSelectRecord={onSelectRecord}
+      />
     </div>
   );
 }

@@ -786,3 +786,262 @@ export function exportDashboardSnapshotToCsv(
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+const SHORT_MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+function getWeekUtcWindow(
+  wkIdx: number,
+  monthScope: MonthScope,
+): [number, number] {
+  if (monthScope === 'nov2026') {
+    const start = Date.UTC(2026, 10, 2 + wkIdx * 7);
+    return [start, start + 6 * 86_400_000];
+  }
+  const start = Date.UTC(2026, 8, 28 + wkIdx * 7);
+  return [start, start + 6 * 86_400_000];
+}
+
+function getCycleUtcWindow(monthScope: MonthScope): [number, number] {
+  if (monthScope === 'nov2026') {
+    return [Date.UTC(2026, 10, 2), Date.UTC(2026, 11, 6)];
+  }
+  return [Date.UTC(2026, 8, 28), Date.UTC(2026, 10, 1)];
+}
+
+function buildValidUtcTs(year: number, month: number, day: number): number | null {
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const dt = new Date(Date.UTC(year, month - 1, day));
+  if (
+    dt.getUTCFullYear() !== year ||
+    dt.getUTCMonth() !== month - 1 ||
+    dt.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return dt.getTime();
+}
+
+export function formatUtcTimestamp(ts: number): string {
+  const dt = new Date(ts);
+  const d = dt.getUTCDate();
+  const m = SHORT_MONTHS[dt.getUTCMonth()] ?? '';
+  const y = dt.getUTCFullYear();
+  return `${d} ${m} ${y}`;
+}
+
+export function formatUtcIsoKey(ts: number): string {
+  const dt = new Date(ts);
+  const y = dt.getUTCFullYear();
+  const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(dt.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+export function parseWeekVideoDates(
+  rawStrings: string[],
+  wkIdx: number,
+  monthScope: MonthScope,
+): number[] {
+  const [wkStart, wkEnd] = getWeekUtcWindow(wkIdx, monthScope);
+  const [cycStart, cycEnd] = getCycleUtcWindow(monthScope);
+  const timestamps: number[] = [];
+
+  for (const raw of rawStrings) {
+    if (!raw) continue;
+    const matches = raw.match(/\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}/g);
+    if (!matches) continue;
+
+    for (const token of matches) {
+      const parts = token.split(/[-/.]/);
+      if (parts.length !== 3) continue;
+      const a = Number(parts[0]);
+      const b = Number(parts[1]);
+      let year = Number(parts[2]);
+      if (!Number.isFinite(a) || !Number.isFinite(b) || !Number.isFinite(year)) {
+        continue;
+      }
+      if (year === 206) year = 2026;
+      else if (year < 100) year += 2000;
+
+      const dmy = buildValidUtcTs(year, b, a);
+      const mdy = buildValidUtcTs(year, a, b);
+
+      let resolved: number | null = null;
+      if (dmy !== null && mdy !== null) {
+        const dmyInWk = dmy >= wkStart && dmy <= wkEnd;
+        const mdyInWk = mdy >= wkStart && mdy <= wkEnd;
+        if (dmyInWk && !mdyInWk) resolved = dmy;
+        else if (mdyInWk && !dmyInWk) resolved = mdy;
+        else {
+          const dmyInCyc = dmy >= cycStart && dmy <= cycEnd;
+          const mdyInCyc = mdy >= cycStart && mdy <= cycEnd;
+          if (dmyInCyc && !mdyInCyc) resolved = dmy;
+          else if (mdyInCyc && !dmyInCyc) resolved = mdy;
+          else resolved = dmy;
+        }
+      } else {
+        resolved = dmy ?? mdy;
+      }
+
+      if (resolved !== null) {
+        timestamps.push(resolved);
+      }
+    }
+  }
+
+  return timestamps.sort((x, y) => x - y);
+}
+
+export interface LastVideoReceiptInfo {
+  timestamp: number | null;
+  isoDate: string | null;
+  formattedDate: string;
+  weekNumber: number | null;
+  weekLabel: string | null;
+  allDateCount: number;
+  weekDatesSummary: {
+    weekNumber: number;
+    shortLabel: string;
+    videoCount: number;
+    latestTs: number | null;
+    formattedDates: string[];
+  }[];
+}
+
+export function getRecordLastVideoInfo(
+  rec: MasterNetworkRecord,
+  monthScope: MonthScope,
+  selectedWeek: WeekFilter = 'ALL',
+): LastVideoReceiptInfo {
+  const wkIdxFilter = getWeekIndex(selectedWeek);
+  let bestTs: number | null = null;
+  let bestWeekNum: number | null = null;
+  let bestWeekLabel: string | null = null;
+  let allDateCount = 0;
+
+  const weekDatesSummary = rec.weeks.map((wk, idx) => {
+    const parsed = parseWeekVideoDates(
+      [wk.video1, wk.video2, wk.video3, wk.date],
+      idx,
+      monthScope,
+    );
+    const shouldInclude = wkIdxFilter === null || wkIdxFilter === idx;
+    if (shouldInclude) {
+      allDateCount += parsed.length;
+      for (const ts of parsed) {
+        if (bestTs === null || ts >= bestTs) {
+          bestTs = ts;
+          bestWeekNum = wk.weekNumber;
+          bestWeekLabel = `WK${wk.weekNumber}`;
+        }
+      }
+    }
+    return {
+      weekNumber: wk.weekNumber,
+      shortLabel: wk.label,
+      videoCount: wk.videoCount,
+      latestTs: parsed.length > 0 ? parsed[parsed.length - 1] : null,
+      formattedDates: parsed.map(formatUtcTimestamp),
+    };
+  });
+
+  return {
+    timestamp: bestTs,
+    isoDate: bestTs !== null ? formatUtcIsoKey(bestTs) : null,
+    formattedDate: bestTs !== null ? formatUtcTimestamp(bestTs) : '—',
+    weekNumber: bestWeekNum,
+    weekLabel: bestWeekLabel,
+    allDateCount,
+    weekDatesSummary,
+  };
+}
+
+export function exportLastVideoToCsv(
+  rows: Array<{
+    record: MasterNetworkRecord;
+    lastVideoDate: string;
+    lastVideoWeek: string;
+    daysSinceLast: number | null;
+    priorMonthDate: string | null;
+  }>,
+  monthScope: MonthScope,
+  filename?: string,
+): void {
+  const headers = [
+    'SR',
+    'CODE',
+    'NETWORK NAME',
+    'STATE',
+    'CITY',
+    'OPERATOR',
+    'TYPE',
+    'CATEGORY',
+    'PANEL',
+    'LAST VIDEO RECEIVED DATE',
+    'LAST VIDEO WEEK',
+    'DAYS SINCE LAST VIDEO',
+    'PRIOR MONTH LAST VIDEO DATE',
+    'TOTAL VIDEOS',
+    'AS PER BILLING',
+  ];
+
+  const escapeCell = (v: unknown): string => {
+    const s = String(v ?? '');
+    if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+      return `"${s.replace(/"/g, '""')}"`;
+    }
+    return s;
+  };
+
+  const lines = [headers.map(escapeCell).join(',')];
+  for (const item of rows) {
+    const r = item.record;
+    lines.push(
+      [
+        r.sr,
+        r.code,
+        r.networkName,
+        r.state,
+        r.city,
+        r.operationName,
+        r.type,
+        r.category,
+        r.weekUpdate,
+        item.lastVideoDate,
+        item.lastVideoWeek,
+        item.daysSinceLast ?? '',
+        item.priorMonthDate ?? '',
+        r.videoPayment,
+        r.asPerBilling,
+      ]
+        .map(escapeCell)
+        .join(','),
+    );
+  }
+
+  const resolvedName =
+    filename ??
+    `${monthScope === 'nov2026' ? 'nov-2026' : 'oct-2026'}-last-video-received-dates.csv`;
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = resolvedName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}

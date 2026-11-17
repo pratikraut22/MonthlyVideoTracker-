@@ -1,15 +1,20 @@
 import { useEffect } from 'react';
 import { Calendar, Check, Cpu, IndianRupee, MapPin, Minus, User, X } from 'lucide-react';
 import type { MasterNetworkRecord } from '../types/tracker';
-import { formatCurrencyINR } from '../utils/analytics';
+import { formatCurrencyINR, getRecordLastVideoInfo } from '../utils/analytics';
 import { BillingIndicator, NetworkTypeIndicator } from './StatusText';
 
 interface NetworkDrawerProps {
   record: MasterNetworkRecord | null;
+  monthScope?: 'oct2026' | 'nov2026';
   onClose: () => void;
 }
 
-export function NetworkDrawer({ record, onClose }: NetworkDrawerProps) {
+export function NetworkDrawer({
+  record,
+  monthScope = 'nov2026',
+  onClose,
+}: NetworkDrawerProps) {
   useEffect(() => {
     if (!record) return;
     const onKey = (e: KeyboardEvent) => {
@@ -30,6 +35,7 @@ export function NetworkDrawer({ record, onClose }: NetworkDrawerProps) {
   const lastWkNum = record.weeks[4]?.weekNumber ?? firstWkNum + 4;
   const firstDateRange = record.weeks[0]?.rangeLabel.split('–')[0]?.trim() ?? '';
   const lastDateRange = record.weeks[4]?.rangeLabel.split('–')[1]?.trim() ?? '';
+  const lastVideoInfo = getRecordLastVideoInfo(record, monthScope, 'ALL');
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/30 backdrop-blur-[1px]">
@@ -82,7 +88,7 @@ export function NetworkDrawer({ record, onClose }: NetworkDrawerProps) {
         </div>
 
         <div className="p-6 space-y-6">
-          <div className="grid grid-cols-2 sm:grid-cols-4 border border-slate-200 rounded-lg divide-y sm:divide-y-0 sm:divide-x divide-slate-200 bg-slate-50/50">
+          <div className="grid grid-cols-2 sm:grid-cols-5 border border-slate-200 rounded-lg divide-y sm:divide-y-0 sm:divide-x divide-slate-200 bg-slate-50/50">
             <div className="p-3.5">
               <div className="text-xs text-slate-500">Network Type</div>
               <div className="mt-1.5">
@@ -94,6 +100,17 @@ export function NetworkDrawer({ record, onClose }: NetworkDrawerProps) {
               <div className="mt-1.5">
                 <BillingIndicator status={record.asPerBilling} />
               </div>
+            </div>
+            <div className="p-3.5">
+              <div className="text-xs text-slate-500">Last Video Received</div>
+              <div className="mt-1 text-sm font-semibold font-mono tabular-nums text-slate-900">
+                {lastVideoInfo.formattedDate}
+              </div>
+              {lastVideoInfo.weekLabel && (
+                <div className="text-[11px] font-mono text-blue-700">
+                  {lastVideoInfo.weekLabel}
+                </div>
+              )}
             </div>
             <div className="p-3.5">
               <div className="text-xs text-slate-500">Total Reported / Box</div>
