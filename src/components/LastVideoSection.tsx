@@ -267,7 +267,7 @@ export function LastVideoSection({
   };
 
   return (
-    <section className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+    <section className="bg-white border border-slate-200/90 rounded-xl overflow-hidden">
       <div className="px-5 py-3.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">

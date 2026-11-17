@@ -45,7 +45,7 @@ export function FilterBar({
     filters.billing !== 'ALL';
 
   return (
-    <div className="bg-white border border-slate-200 rounded-lg p-3.5 space-y-3">
+    <div className="bg-white border border-slate-200/90 rounded-xl p-3.5 space-y-3">
       <div className="flex flex-wrap items-center gap-2.5">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />

@@ -178,6 +178,15 @@ export default function App() {
   const activeNavMeta =
     NAV_ITEMS.find((n) => n.id === activeTab) ?? NAV_ITEMS[0];
 
+  const activeNavSubtitle: Record<ActiveTab, string> = {
+    overview: 'Portfolio health, week-wise achievements and video monitoring',
+    master: 'Full network roster, 35-day box matrix, video logs and billing',
+    operators: 'Operator-wise pending queues and dispatch follow-ups',
+    pending: 'Active networks without a landing video in the selected period',
+    billing: 'Billing settlements, payout approvals and remark exceptions',
+    dth: 'Daily DTH feed submissions and Sony activity matrix',
+  };
+
   const handleJumpToOperatorQueue = (op: string) => {
     setSelectedOperatorQueue(op);
     setActiveTab('operators');
@@ -185,8 +194,14 @@ export default function App() {
 
   const snapshotOnly = workbook?.snapshotOnly ?? null;
 
+  const activeCountDisplay = activeMonthWorkbook
+    ? activeMonthWorkbook.masterRecords.filter(
+        (r) => r.type === 'ONLINE' || r.type === 'OFFLINE',
+      ).length
+    : 0;
+
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex">
+    <div className="min-h-screen bg-[#F4F7FB] text-slate-900 flex">
       <input
         ref={fileInputRef}
         type="file"
@@ -197,43 +212,43 @@ export default function App() {
 
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 z-40 bg-slate-900/30 lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
           aria-hidden="true"
         />
       )}
 
       <aside
-        className={`fixed lg:sticky top-0 left-0 z-50 h-screen w-64 shrink-0 bg-white border-r border-slate-200 flex flex-col justify-between transition-transform duration-150 lg:translate-x-0 ${
+        className={`fixed lg:sticky top-0 left-0 z-50 h-screen w-64 shrink-0 bg-[#0B1222] text-slate-300 border-r border-slate-800/80 flex flex-col justify-between transition-transform duration-150 lg:translate-x-0 ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div>
-          <div className="h-14 px-5 border-b border-slate-200 flex items-center justify-between">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-7 h-7 rounded bg-slate-900 text-white flex items-center justify-center shrink-0">
-                <BarChart3 className="w-4 h-4" />
+          <div className="px-5 py-4 border-b border-slate-800/80 flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0">
+                <BarChart3 className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <div className="text-sm font-bold text-slate-900 truncate">
+                <div className="text-sm font-bold text-white truncate tracking-tight">
                   Landing Tracker
                 </div>
-                <div className="text-[11px] font-mono text-slate-500 truncate">
-                  Video Operations
+                <div className="text-[11px] text-slate-400 truncate">
+                  Network video monitoring
                 </div>
               </div>
             </div>
             <button
               type="button"
               onClick={() => setMobileMenuOpen(false)}
-              className="lg:hidden p-1 text-slate-500 hover:text-slate-900 cursor-pointer"
+              className="lg:hidden p-1 text-slate-400 hover:text-white cursor-pointer"
               aria-label="Close navigation"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          <nav className="p-3 space-y-1" aria-label="Primary sections">
+          <nav className="p-3.5 space-y-1.5" aria-label="Primary sections">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const active = activeTab === item.id;
@@ -245,13 +260,17 @@ export default function App() {
                     setActiveTab(item.id);
                     setMobileMenuOpen(false);
                   }}
-                  className={`w-full px-3 py-2 rounded-md text-xs font-medium flex items-center gap-2.5 whitespace-nowrap shrink-0 cursor-pointer transition-colors ${
+                  className={`w-full px-3.5 py-2.5 rounded-xl text-[13px] font-medium flex items-center gap-3 whitespace-nowrap shrink-0 cursor-pointer transition-colors border ${
                     active
-                      ? 'bg-slate-900 text-white'
-                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                      ? 'bg-blue-600/12 border-blue-500 text-white'
+                      : 'border-transparent text-slate-400 hover:bg-white/[0.04] hover:text-slate-100'
                   }`}
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
+                  <Icon
+                    className={`w-4 h-4 shrink-0 ${
+                      active ? 'text-blue-400' : 'text-slate-400'
+                    }`}
+                  />
                   <span>{item.label}</span>
                 </button>
               );
@@ -259,111 +278,118 @@ export default function App() {
           </nav>
         </div>
 
-        <div className="p-4 border-t border-slate-200 space-y-3 text-xs">
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5 font-medium text-slate-700">
-              <FileSpreadsheet className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span className="truncate">Active Workbooks</span>
-            </div>
-            <div className="text-[11px] text-slate-500 leading-relaxed">
-              {activeMonthWorkbook
-                ? activeMonthWorkbook.periodLabel
-                : snapshotOnly
-                  ? snapshotOnly.periodLabel
-                  : 'Loading workbooks...'}
-            </div>
-            {workbook && (
-              <div className="text-[11px] font-mono tabular-nums text-slate-500 space-y-0.5">
-                {workbook.nov2026 && (
-                  <div
-                    className={
-                      effectiveMonthScope === 'nov2026'
-                        ? 'text-emerald-700 font-medium'
-                        : 'text-slate-500'
-                    }
-                  >
-                    Nov 2026: {workbook.nov2026.masterRecords.length} rows ·{' '}
-                    {workbook.nov2026.dthLogs.length} DTH ·{' '}
-                    {workbook.nov2026.activeWeekHint}
-                  </div>
-                )}
-                {workbook.oct2026 && (
-                  <div
-                    className={
-                      effectiveMonthScope === 'oct2026'
-                        ? 'text-emerald-700 font-medium'
-                        : 'text-slate-500'
-                    }
-                  >
-                    Oct 2026: {workbook.oct2026.masterRecords.length} rows ·{' '}
-                    {workbook.oct2026.dthLogs.length} DTH
-                  </div>
-                )}
+        <div className="p-3.5 text-xs">
+          <div className="bg-[#101A30] border border-slate-800/90 rounded-xl p-3.5 space-y-2.5">
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-400">
+                <FileSpreadsheet className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <span className="truncate">Source workbook</span>
               </div>
-            )}
-          </div>
+              <div className="text-xs font-semibold text-white truncate">
+                {activeMonthWorkbook
+                  ? activeMonthWorkbook.sourceName
+                  : snapshotOnly
+                    ? snapshotOnly.sourceName
+                    : 'Loading workbooks...'}
+              </div>
+              {activeMonthWorkbook && (
+                <div className="text-[11px] font-mono tabular-nums text-slate-400">
+                  {activeCountDisplay} active ·{' '}
+                  {activeMonthWorkbook.masterRecords.length} total
+                </div>
+              )}
+              {workbook && (
+                <div className="text-[10px] font-mono tabular-nums text-slate-500 space-y-0.5 pt-1 border-t border-slate-800/80">
+                  {workbook.nov2026 && (
+                    <div
+                      className={
+                        effectiveMonthScope === 'nov2026'
+                          ? 'text-blue-300 font-medium'
+                          : 'text-slate-500'
+                      }
+                    >
+                      Nov 2026: {workbook.nov2026.masterRecords.length} rows ·{' '}
+                      {workbook.nov2026.activeWeekHint}
+                    </div>
+                  )}
+                  {workbook.oct2026 && (
+                    <div
+                      className={
+                        effectiveMonthScope === 'oct2026'
+                          ? 'text-blue-300 font-medium'
+                          : 'text-slate-500'
+                      }
+                    >
+                      Oct 2026: {workbook.oct2026.masterRecords.length} rows
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
-          <div className="flex flex-col gap-1.5">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full h-8 px-2.5 inline-flex items-center justify-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-medium rounded border border-slate-200 whitespace-nowrap shrink-0 cursor-pointer"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              Import .xlsx / .csv
-            </button>
-            {isCustomUpload && (
+            <div className="flex flex-col gap-1.5">
               <button
                 type="button"
-                onClick={() => void loadInitialData()}
-                className="w-full h-8 px-2.5 inline-flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-blue-700 font-medium rounded border border-slate-200 whitespace-nowrap shrink-0 cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full h-8 px-2.5 inline-flex items-center justify-center gap-1.5 bg-[#17233D] hover:bg-[#1E2E4F] text-slate-100 font-medium rounded-lg border border-slate-700/80 whitespace-nowrap shrink-0 cursor-pointer transition-colors"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Restore Default Workbooks
+                <Upload className="w-3.5 h-3.5 text-slate-300" />
+                Load Excel / CSV
               </button>
-            )}
+              {isCustomUpload && (
+                <button
+                  type="button"
+                  onClick={() => void loadInitialData()}
+                  className="w-full h-8 px-2.5 inline-flex items-center justify-center gap-1.5 bg-blue-600/15 hover:bg-blue-600/25 text-blue-300 font-medium rounded-lg border border-blue-500/40 whitespace-nowrap shrink-0 cursor-pointer transition-colors"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Restore Default
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </aside>
 
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="sticky top-0 z-30 h-14 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between gap-3">
+        <header className="sticky top-0 z-30 bg-white border-b border-slate-200/90 px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-1.5 rounded text-slate-600 hover:bg-slate-100 cursor-pointer"
+              className="lg:hidden p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 cursor-pointer"
               aria-label="Open navigation"
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="min-w-0 flex items-center gap-2 text-xs sm:text-sm">
-              <span className="text-slate-400 hidden sm:inline">
-                Operations Tracker
-              </span>
-              <span className="text-slate-300 hidden sm:inline">/</span>
-              <h1 className="font-semibold text-slate-900 truncate">
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl font-bold text-slate-900 truncate tracking-tight">
                 {activeNavMeta.label}
               </h1>
-              {workbook && (
-                <span className="hidden md:inline text-xs font-mono text-slate-500">
-                  ·{' '}
-                  {effectiveMonthScope === 'nov2026'
-                    ? 'November 2026'
-                    : 'October 2026'}
-                </span>
-              )}
+              <p className="text-xs text-slate-500 truncate hidden sm:block">
+                {activeNavSubtitle[activeTab]}
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0">
+            {workbook && (
+              <span className="hidden md:inline-flex items-center h-8 px-3 rounded-lg bg-slate-50 border border-slate-200 text-xs font-mono text-slate-600 whitespace-nowrap">
+                {effectiveMonthScope === 'nov2026'
+                  ? 'November 2026'
+                  : 'October 2026'}
+                {activeMonthWorkbook?.activeWeekHint
+                  ? ` · ${activeMonthWorkbook.activeWeekHint}`
+                  : ''}
+              </span>
+            )}
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="h-8 px-3 hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded hover:bg-slate-50 whitespace-nowrap shrink-0 cursor-pointer"
+              className="h-8 px-3 hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <Upload className="w-3.5 h-3.5" />
-              Load Excel / CSV
+              <Upload className="w-3.5 h-3.5 text-slate-500" />
+              Import
             </button>
             <button
               type="button"
@@ -381,7 +407,7 @@ export default function App() {
                   exportRecordsToCsv(filteredRecords, effectiveMonthScope);
                 }
               }}
-              className="h-8 px-3 inline-flex items-center gap-1.5 text-xs font-medium text-white bg-slate-900 rounded hover:bg-slate-800 disabled:opacity-40 whitespace-nowrap shrink-0 cursor-pointer"
+              className="h-8 px-3.5 inline-flex items-center gap-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-40 whitespace-nowrap shrink-0 cursor-pointer transition-colors"
             >
               <Download className="w-3.5 h-3.5" />
               Export CSV

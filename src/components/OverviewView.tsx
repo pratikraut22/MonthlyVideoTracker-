@@ -2,10 +2,12 @@ import { useMemo, useState } from 'react';
 import {
   ArrowUpDown,
   BarChart3,
+  Box,
   CheckCircle2,
-  Film,
-  IndianRupee,
-  Radio,
+  Hourglass,
+  Network,
+  PlayCircle,
+  Wifi,
 } from 'lucide-react';
 import type {
   DashboardDataSnapshot,
@@ -139,18 +141,46 @@ export function OverviewView({
     }
   };
 
-  const billingPct =
-    stats.totalNetworks > 0
-      ? Math.round((stats.billingDoneCount / stats.totalNetworks) * 100)
-      : 0;
-  const onlinePct =
-    stats.totalNetworks > 0
-      ? Math.round((stats.onlineCount / stats.totalNetworks) * 100)
-      : 0;
-  const weekBoxPct =
-    stats.totalNetworks > 0
-      ? Math.round((stats.activeWeekBoxNetworks / stats.totalNetworks) * 100)
-      : 0;
+  const activeRecords = useMemo(
+    () => records.filter((r) => r.type === 'ONLINE' || r.type === 'OFFLINE'),
+    [records],
+  );
+
+  const kpiDerived = useMemo(() => {
+    const activeTotal = Math.max(1, activeRecords.length);
+    let reportedCount = 0;
+    let pendingCount = 0;
+    let weekVideoNetworks = 0;
+
+    for (const r of activeRecords) {
+      if (selectedWeekIdx !== null) {
+        const w = r.weeks[selectedWeekIdx];
+        const box = w?.boxCount ?? 0;
+        const vid = w?.videoCount ?? 0;
+        if (box > 0 || vid > 0) reportedCount++;
+        if (vid > 0) weekVideoNetworks++;
+        else pendingCount++;
+      } else {
+        if (r.totalReported > 0) reportedCount++;
+        if (r.videoPayment > 0) weekVideoNetworks++;
+        else pendingCount++;
+      }
+    }
+
+    return {
+      activeCount: activeRecords.length,
+      activeOnlinePct: Math.round((stats.onlineCount / activeTotal) * 100),
+      reportedCount,
+      reportedPct: Math.round((reportedCount / activeTotal) * 100),
+      pendingCount,
+      pendingPct: Math.round((pendingCount / activeTotal) * 100),
+      weekVideoNetworks,
+      boxConfirmedPct:
+        stats.totalNetworks > 0
+          ? Math.round((stats.boxYesCount / stats.totalNetworks) * 100)
+          : 0,
+    };
+  }, [activeRecords, selectedWeekIdx, stats.onlineCount, stats.totalNetworks, stats.boxYesCount]);
 
   const achieveDenom = Math.max(1, stats.activeAchieveCount);
   const billingDoneActivePct =
@@ -178,116 +208,100 @@ export function OverviewView({
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 bg-white border border-slate-200 rounded-lg divide-y sm:divide-y-0 sm:divide-x divide-slate-200">
-        <div className="p-4">
-          <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-            <span>
-              {activeWeekMeta
-                ? `${activeWeekMeta.wkLabel} Box Active`
-                : 'Total Networks'}
-            </span>
-            <Radio className="w-4 h-4 text-slate-400" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="bg-white border border-slate-200/90 border-t-[3px] border-t-blue-600 rounded-xl p-5">
+          <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            <span>Total Networks</span>
+            <Network className="w-4 h-4 text-slate-400" />
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono tabular-nums text-slate-900">
-              {formatNumber(
-                activeWeekMeta ? stats.activeWeekBoxNetworks : stats.totalNetworks,
-              )}
-            </span>
-            <span className="text-xs font-mono tabular-nums text-emerald-700">
-              {activeWeekMeta
-                ? `of ${formatNumber(stats.totalNetworks)} (${weekBoxPct}%)`
-                : `${onlinePct}% online`}
-            </span>
+          <div className="mt-2.5 text-3xl font-bold font-mono tabular-nums text-slate-900">
+            {formatNumber(stats.totalNetworks)}
           </div>
           <div className="mt-2 text-xs text-slate-500 font-mono tabular-nums">
-            {stats.onlineCount} Online · {stats.offlineCount} Offline · {stats.shutdownCount} Shut · {stats.onHoldCount} Hold
+            {kpiDerived.activeCount} active · {stats.shutdownCount} shutdown · {stats.onHoldCount} on hold
           </div>
         </div>
 
-        <div className="p-4">
-          <div className="flex items-center justify-between text-xs font-medium text-slate-500">
+        <div className="bg-white border border-slate-200/90 border-t-[3px] border-t-emerald-500 rounded-xl p-5">
+          <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            <span>Online Boxes</span>
+            <Wifi className="w-4 h-4 text-emerald-600" />
+          </div>
+          <div className="mt-2.5 text-3xl font-bold font-mono tabular-nums text-slate-900">
+            {formatNumber(stats.onlineCount)}
+          </div>
+          <div className="mt-2 text-xs text-slate-500 font-mono tabular-nums">
+            {kpiDerived.activeOnlinePct}% of active · {stats.offlineCount} offline
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200/90 border-t-[3px] border-t-emerald-500 rounded-xl p-5">
+          <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-500">
             <span>
-              {activeWeekMeta
-                ? `${activeWeekMeta.wkLabel} BARC Coverage`
-                : 'Billing Attainment'}
+              {activeWeekMeta ? `Reported Week ${activeWeekMeta.weekNumber}` : 'Billing Done'}
             </span>
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono tabular-nums text-slate-900">
-              {formatNumber(
-                activeWeekMeta ? stats.activeWeekBarcVideos : stats.billingDoneCount,
-              )}
-            </span>
-            <span className="text-xs font-mono tabular-nums text-slate-500">
-              {activeWeekMeta
-                ? `BARC active · ${formatNumber(stats.billingDoneCount)} billing done`
-                : `/ ${formatNumber(stats.totalNetworks)} (${billingPct}%)`}
-            </span>
-          </div>
-          <div className="mt-2 text-xs text-amber-700 font-mono tabular-nums">
-            {activeWeekMeta
-              ? `${formatNumber(stats.activeWeekPendingVideos)} networks without ${activeWeekMeta.wkLabel} video`
-              : `${formatNumber(stats.billingPendingCount)} billing pending · ${formatNumber(stats.boxYesCount)} box verified`}
-          </div>
-        </div>
-
-        <div className="p-4">
-          <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-            <span>
-              {activeWeekMeta
-                ? `${activeWeekMeta.wkLabel} Videos Submitted`
-                : 'Videos Verified'}
-            </span>
-            <Film className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono tabular-nums text-slate-900">
-              {formatNumber(
-                activeWeekMeta ? stats.activeWeekVideos : stats.totalVideosVerified,
-              )}
-            </span>
-            <span className="text-xs font-mono tabular-nums text-slate-500">
-              {activeWeekMeta
-                ? `total ${formatNumber(stats.totalVideosVerified)} all weeks`
-                : `across ${formatNumber(stats.videoYesCount)} done networks`}
-            </span>
-          </div>
-          <div className="mt-2 text-xs text-slate-500 font-mono tabular-nums">
-            {formatNumber(stats.totalReportedLandings)} reported · {formatNumber(stats.totalBoxWeeks)} box-weeks
-          </div>
-        </div>
-
-        <div className="p-4">
-          <div className="flex items-center justify-between text-xs font-medium text-slate-500">
-            <span>
-              {activeWeekMeta
-                ? `${activeWeekMeta.wkLabel} Est. Payout`
-                : 'Final Amount To Pay'}
-            </span>
-            <IndianRupee className="w-4 h-4 text-slate-400" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono tabular-nums text-slate-900">
-              {formatCurrencyINR(
-                activeWeekMeta ? stats.activeWeekEstPayoutINR : stats.totalPayoutINR,
-              )}
-            </span>
-            <span className="text-xs font-mono tabular-nums text-slate-500">
-              ₹15 / video
-            </span>
+          <div className="mt-2.5 text-3xl font-bold font-mono tabular-nums text-slate-900">
+            {formatNumber(
+              activeWeekMeta ? kpiDerived.reportedCount : stats.billingDoneCount,
+            )}
           </div>
           <div className="mt-2 text-xs text-slate-500 font-mono tabular-nums">
             {activeWeekMeta
-              ? `Cycle total: ${formatCurrencyINR(stats.totalPayoutINR)}`
-              : `${formatNumber(stats.barcCount)} BARC · ${formatNumber(stats.starCount)} STAR · ${formatNumber(stats.othersProgramCount)} Others`}
+              ? `${kpiDerived.reportedPct}% of active networks`
+              : `${billingDoneActivePct}% of active · ${formatCurrencyINR(stats.totalPayoutINR)} payout`}
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200/90 border-t-[3px] border-t-blue-600 rounded-xl p-5">
+          <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            <span>
+              {activeWeekMeta ? `Videos Week ${activeWeekMeta.weekNumber}` : 'Videos This Month'}
+            </span>
+            <PlayCircle className="w-4 h-4 text-blue-600" />
+          </div>
+          <div className="mt-2.5 text-3xl font-bold font-mono tabular-nums text-slate-900">
+            {formatNumber(
+              activeWeekMeta ? stats.activeWeekVideos : stats.totalVideosVerified,
+            )}
+          </div>
+          <div className="mt-2 text-xs text-slate-500 font-mono tabular-nums">
+            from {formatNumber(kpiDerived.weekVideoNetworks)} networks · {formatNumber(stats.totalVideosVerified)} this month
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200/90 border-t-[3px] border-t-rose-500 rounded-xl p-5">
+          <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            <span>
+              {activeWeekMeta ? `Pending Week ${activeWeekMeta.weekNumber}` : 'Pending Videos'}
+            </span>
+            <Hourglass className="w-4 h-4 text-rose-600" />
+          </div>
+          <div className="mt-2.5 text-3xl font-bold font-mono tabular-nums text-slate-900">
+            {formatNumber(kpiDerived.pendingCount)}
+          </div>
+          <div className="mt-2 text-xs text-slate-500 font-mono tabular-nums">
+            {kpiDerived.pendingPct}% of active · no video yet
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200/90 border-t-[3px] border-t-amber-500 rounded-xl p-5">
+          <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            <span>Box Status Confirmed</span>
+            <Box className="w-4 h-4 text-amber-600" />
+          </div>
+          <div className="mt-2.5 text-3xl font-bold font-mono tabular-nums text-slate-900">
+            {formatNumber(stats.boxYesCount)}
+          </div>
+          <div className="mt-2 text-xs text-slate-500 font-mono tabular-nums">
+            {kpiDerived.boxConfirmedPct}% of all · video status YES: {formatNumber(stats.videoYesCount)}
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <section className="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-5">
+        <section className="lg:col-span-2 bg-white border border-slate-200/90 rounded-xl p-5">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
               <h2 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
@@ -449,7 +463,7 @@ export function OverviewView({
           </div>
         </section>
 
-        <section className="bg-white border border-slate-200 rounded-lg p-5 flex flex-col justify-between">
+        <section className="bg-white border border-slate-200/90 rounded-xl p-5 flex flex-col justify-between">
           <div>
             <h2 className="text-sm font-semibold text-slate-900">
               {monthTitle} Billing & Category Mix
@@ -607,7 +621,7 @@ export function OverviewView({
         </section>
       </div>
 
-      <section className="bg-white border border-slate-200 rounded-lg p-5">
+      <section className="bg-white border border-slate-200/90 rounded-xl p-5">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <div>
             <h2 className="text-sm font-semibold text-slate-900">
@@ -685,7 +699,7 @@ export function OverviewView({
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <section className="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-5">
+        <section className="lg:col-span-2 bg-white border border-slate-200/90 rounded-xl p-5">
           <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
             <div>
               <h2 className="text-sm font-semibold text-slate-900">
@@ -795,7 +809,7 @@ export function OverviewView({
           </div>
         </section>
 
-        <section className="bg-white border border-slate-200 rounded-lg p-5 flex flex-col justify-between">
+        <section className="bg-white border border-slate-200/90 rounded-xl p-5 flex flex-col justify-between">
           <div>
             <h2 className="text-sm font-semibold text-slate-900">
               {comparisonTotals
@@ -910,7 +924,7 @@ export function OverviewView({
         </section>
       </div>
 
-      <section className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+      <section className="bg-white border border-slate-200/90 rounded-xl overflow-hidden">
         <div className="px-5 py-3.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-sm font-semibold text-slate-900">
