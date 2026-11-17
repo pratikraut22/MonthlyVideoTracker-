@@ -6,6 +6,7 @@ import {
   FileSpreadsheet,
   IndianRupee,
   LayoutDashboard,
+  ListFilter,
   Menu,
   RotateCcw,
   Table2,
@@ -22,6 +23,7 @@ import { MasterTrackerView } from './components/MasterTrackerView';
 import { NetworkDrawer } from './components/NetworkDrawer';
 import { OperatorQueuesView } from './components/OperatorQueuesView';
 import { OverviewView } from './components/OverviewView';
+import { PendingView } from './components/PendingView';
 import { WeekSelectorBar } from './components/WeekSelectorBar';
 import {
   loadDefaultWorkbook,
@@ -51,6 +53,7 @@ const NAV_ITEMS: Array<{
   { id: 'overview', label: 'Executive Overview', icon: LayoutDashboard },
   { id: 'master', label: 'Master Tracker', icon: Table2 },
   { id: 'operators', label: 'Operator Queues', icon: Users },
+  { id: 'pending', label: 'Pending', icon: ListFilter },
   { id: 'billing', label: 'Billing & Exceptions', icon: IndianRupee },
   { id: 'dth', label: 'DTH & Sony Activity', icon: Tv },
 ];
@@ -523,6 +526,16 @@ export default function App() {
                   selectedWeek={filters.week}
                   monthScope={effectiveMonthScope}
                   onSelectOperator={setSelectedOperatorQueue}
+                  onSelectRecord={setInspectedRecord}
+                />
+              )}
+
+              {activeTab === 'pending' && (
+                <PendingView
+                  records={activeMonthWorkbook.masterRecords}
+                  selectedWeek={filters.week}
+                  monthScope={effectiveMonthScope}
+                  onSelectWeek={(week) => setFilters({ ...filters, week })}
                   onSelectRecord={setInspectedRecord}
                 />
               )}

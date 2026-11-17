@@ -186,5 +186,6 @@ export type ActiveTab =
   | 'overview'
   | 'master'
   | 'operators'
+  | 'pending'
   | 'billing'
   | 'dth';
