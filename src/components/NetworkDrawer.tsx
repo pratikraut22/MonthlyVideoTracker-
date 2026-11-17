@@ -124,7 +124,9 @@ export function NetworkDrawer({
                 <IndianRupee className="w-3.5 h-3.5 text-slate-400" />
                 {formatCurrencyINR(record.finalAmountToPay).replace('₹', '')}
                 <span className="text-xs font-normal text-slate-500">
-                  ({record.budgetLabel})
+                  {record.isFourWeekBonus
+                    ? `(${record.videoWeeksCount}w ₹100 rule · base ₹${record.baseAmountToPay})`
+                    : `(${record.budgetLabel})`}
                 </span>
               </div>
             </div>

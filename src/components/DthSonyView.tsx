@@ -44,6 +44,7 @@ export function DthSonyView({
   const dthSummary = useMemo(() => {
     let totalAmount = 0;
     let payableEntries = 0;
+    let notToPayEntries = 0;
     let excludedEntries = 0;
     const byOp = new Map<string, { logs: number; payable: number; amount: number }>();
 
@@ -60,14 +61,20 @@ export function DthSonyView({
         payableEntries++;
         entry.payable++;
         entry.amount += row.amount;
-      } else if (row.rawAmount.toUpperCase().includes('NOT CONSIDER')) {
-        excludedEntries++;
+      } else {
+        const upperRaw = row.rawAmount.toUpperCase();
+        if (upperRaw.includes('NOT TO PAY') || upperRaw === '-') {
+          notToPayEntries++;
+        } else if (upperRaw.includes('NOT CONSIDER')) {
+          excludedEntries++;
+        }
       }
     }
 
     return {
       totalAmount,
       payableEntries,
+      notToPayEntries,
       excludedEntries,
       byOp: Array.from(byOp.entries()).sort((a, b) => b[1].amount - a[1].amount),
     };
@@ -145,14 +152,14 @@ export function DthSonyView({
 
         <div className="text-xs font-mono text-slate-500">
           {subTab === 'dth'
-            ? 'Sheet note: SAMEER TATA PLAY - PAY · AIRTEL UP NOT PAY'
+            ? 'Rule: “-” = NOT TO PAY · AIRTEL UP & AIRTEL (TAMILNADU) NOT TO PAY'
             : `${weekMeta ? `${weekMeta.wkLabel} ` : ''}Sony DPO spots: ${sonyTotalCount}`}
         </div>
       </div>
 
       {subTab === 'dth' ? (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-3 bg-white border border-slate-200 rounded-lg divide-y sm:divide-y-0 sm:divide-x divide-slate-200">
+          <div className="grid grid-cols-1 sm:grid-cols-3 bg-white border border-slate-200/90 rounded-xl divide-y sm:divide-y-0 sm:divide-x divide-slate-200">
             <div className="p-4">
               <div className="flex items-center justify-between text-xs text-slate-500">
                 <span>
@@ -164,7 +171,8 @@ export function DthSonyView({
                 {weekScopedDth.length}
               </div>
               <div className="mt-1 text-xs text-slate-500 font-mono tabular-nums">
-                {dthSummary.payableEntries} payable · {dthSummary.excludedEntries} excluded (No Date)
+                {dthSummary.payableEntries} payable · {dthSummary.notToPayEntries} not to pay
+                {dthSummary.excludedEntries > 0 ? ` · ${dthSummary.excludedEntries} no date` : ''}
               </div>
             </div>
 
@@ -179,7 +187,7 @@ export function DthSonyView({
                 {formatCurrencyINR(dthSummary.totalAmount)}
               </div>
               <div className="mt-1 text-xs text-slate-500 font-mono">
-                ₹15 per verified DTH spot
+                ₹15 per verified spot · “-”, AIRTEL UP &amp; TN excluded
               </div>
             </div>
 
@@ -202,7 +210,7 @@ export function DthSonyView({
             </div>
           </div>
 
-          <section className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+          <section className="bg-white border border-slate-200/90 rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <select
@@ -289,7 +297,7 @@ export function DthSonyView({
           </section>
         </>
       ) : (
-        <section className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <section className="bg-white border border-slate-200/90 rounded-xl overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
             <div>
               <h2 className="text-sm font-semibold text-slate-900">

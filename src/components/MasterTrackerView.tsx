@@ -485,6 +485,11 @@ export function MasterTrackerView({
                         </td>
                         <td className="py-2 px-3 text-right font-mono tabular-nums font-semibold text-slate-900 whitespace-nowrap">
                           {formatCurrencyINR(row.finalAmountToPay)}
+                          {row.isFourWeekBonus && (
+                            <span className="ml-1 text-[10px] font-medium text-emerald-700">
+                              4w
+                            </span>
+                          )}
                         </td>
                       </>
                     )}
@@ -605,6 +610,11 @@ export function MasterTrackerView({
                         </td>
                         <td className="py-2 px-3 text-right font-mono tabular-nums font-semibold text-slate-900 whitespace-nowrap">
                           {formatCurrencyINR(row.finalAmountToPay)}
+                          {row.isFourWeekBonus && (
+                            <span className="ml-1 text-[10px] font-medium text-emerald-700">
+                              ({row.videoWeeksCount}w ₹100)
+                            </span>
+                          )}
                         </td>
                       </>
                     )}

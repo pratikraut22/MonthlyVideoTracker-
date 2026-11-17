@@ -132,6 +132,17 @@ function parseNum(val: unknown): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function isNotToPayNetwork(networkName: string): boolean {
+  const upper = networkName.toUpperCase();
+  if (!upper.includes('AIRTEL')) return false;
+  const isUp = /(?:^|[^A-Z])UP(?:$|[^A-Z])/.test(upper);
+  const isTamilNadu =
+    upper.includes('TAMILNADU') ||
+    upper.includes('TAMIL NADU') ||
+    /(?:^|[^A-Z])TN(?:$|[^A-Z])/.test(upper);
+  return isUp || isTamilNadu;
+}
+
 function normalizeType(val: string): NetworkType {
   const upper = val.toUpperCase().trim();
   if (upper === 'ONLINE') return 'ONLINE';
@@ -301,7 +312,9 @@ export function parseMasterGrid(rows: string[][]): {
     const videoStatusRaw = cleanStr(row[85]).toUpperCase();
     const boxStatusRaw = cleanStr(row[86]).toUpperCase();
     const billingRaw = cleanStr(row[88]).toUpperCase();
-    const budgetLabel = cleanStr(row[89]);
+    const budgetLabelRaw = cleanStr(row[89]);
+    const isExcludedAirtel = isNotToPayNetwork(networkName);
+    const budgetLabel = isExcludedAirtel ? 'Not to pay' : budgetLabelRaw;
 
     const type = normalizeType(cleanStr(row[6]));
     const category = normalizeCategory(cleanStr(row[7]));
@@ -309,6 +322,18 @@ export function parseMasterGrid(rows: string[][]): {
     const operationName = cleanStr(row[10]).toUpperCase();
     const finalOperationName =
       cleanStr(row[87]).toUpperCase() || operationName;
+
+    const budget = isExcludedAirtel ? 0 : parseNum(budgetLabel);
+    const isNotToPay =
+      isExcludedAirtel || budgetLabel.toLowerCase().includes('not to pay') || budget <= 0;
+    const baseAmountToPay = isExcludedAirtel ? 0 : parseNum(row[90]);
+    const videoWeeksCount = weeks.filter((w) => w.videoCount > 0).length;
+    const isFourWeekBonus = !isNotToPay && videoWeeksCount >= 4;
+    const finalAmountToPay = isNotToPay
+      ? 0
+      : isFourWeekBonus
+        ? Math.max(100, baseAmountToPay)
+        : baseAmountToPay;
 
     records.push({
       sr,
@@ -332,9 +357,12 @@ export function parseMasterGrid(rows: string[][]): {
       videoStatus: videoStatusRaw === 'YES' ? 'YES' : 'PENDING',
       boxStatus: boxStatusRaw === 'YES' ? 'YES' : 'PENDING',
       asPerBilling: (billingRaw === 'DONE' ? 'DONE' : 'PENDING') as BillingStatus,
-      budget: parseNum(budgetLabel),
+      budget,
       budgetLabel: budgetLabel || '15',
-      finalAmountToPay: parseNum(row[90]),
+      baseAmountToPay,
+      finalAmountToPay,
+      videoWeeksCount,
+      isFourWeekBonus,
       barcVideoPayment: parseNum(row[109]),
       barcStatus: cleanStr(row[110]).toUpperCase() || 'PENDING',
     });
@@ -488,8 +516,13 @@ export function parseDthGrid(rows: string[][]): DthLogEntry[] {
     if (!date || !networkName) continue;
 
     const rawAmount = cleanStr(row[5]);
+    const isDashNotToPay = !rawAmount || rawAmount === '-';
+    const isExcludedAirtel = isNotToPayNetwork(networkName);
     const parsedNum = Number(rawAmount.replace(/,/g, ''));
-    const amount = rawAmount && Number.isFinite(parsedNum) ? parsedNum : null;
+    const amount =
+      !isExcludedAirtel && !isDashNotToPay && Number.isFinite(parsedNum)
+        ? parsedNum
+        : null;
 
     const rawCount = cleanStr(row[4]);
     const count = rawCount && rawCount !== '-' ? parseNum(rawCount) : 0;
@@ -502,7 +535,7 @@ export function parseDthGrid(rows: string[][]): DthLogEntry[] {
       operator: cleanStr(row[3]).toUpperCase(),
       count,
       amount,
-      rawAmount: rawAmount || '-',
+      rawAmount: isExcludedAirtel || isDashNotToPay ? 'NOT TO PAY' : rawAmount,
     });
   }
   return entries;

@@ -49,7 +49,10 @@ export interface MasterNetworkRecord {
   asPerBilling: BillingStatus;
   budget: number;
   budgetLabel: string;
+  baseAmountToPay: number;
   finalAmountToPay: number;
+  videoWeeksCount: number;
+  isFourWeekBonus: boolean;
   barcVideoPayment: number;
   barcStatus: string;
 }
