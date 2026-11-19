@@ -54,6 +54,20 @@ type OpSortKey =
   | 'selectedWeekVideos'
   | 'selectedWeekPayoutINR';
 
+function formatDateDMY(dateStr: string): string {
+  const parts = dateStr.trim().split('/');
+  if (parts.length !== 3) return dateStr.trim();
+  const p0 = Number(parts[0]);
+  const p1 = Number(parts[1]);
+  const year = parts[2].trim();
+  if (!Number.isFinite(p0) || !Number.isFinite(p1) || !year) {
+    return dateStr.trim();
+  }
+  const day = p0 > 12 ? p0 : p1;
+  const month = p0 > 12 ? p1 : p0;
+  return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+}
+
 export function OverviewView({
   stats,
   records,
@@ -151,15 +165,39 @@ export function OverviewView({
     let reportedCount = 0;
     let pendingCount = 0;
     let weekVideoNetworks = 0;
+    let weekOnlineCount = 0;
+    let weekDoneA = 0;
+    let weekDoneB = 0;
+    let weekDoneOthers = 0;
+    let weekPendingA = 0;
+    let weekPendingBO = 0;
+    let weekCatACount = 0;
+    let weekCatAOn = 0;
+    let weekCatAOff = 0;
 
     for (const r of activeRecords) {
       if (selectedWeekIdx !== null) {
         const w = r.weeks[selectedWeekIdx];
         const box = w?.boxCount ?? 0;
         const vid = w?.videoCount ?? 0;
-        if (box > 0 || vid > 0) reportedCount++;
-        if (vid > 0) weekVideoNetworks++;
-        else pendingCount++;
+        const isReported = box > 0 || vid > 0;
+        if (box > 0) weekOnlineCount++;
+        if (isReported) reportedCount++;
+        if (vid > 0) {
+          weekVideoNetworks++;
+          if (r.category === 'CATEGORY A') weekDoneA++;
+          else if (r.category === 'CATEGORY B') weekDoneB++;
+          else weekDoneOthers++;
+        } else {
+          pendingCount++;
+          if (r.category === 'CATEGORY A') weekPendingA++;
+          else weekPendingBO++;
+        }
+        if (r.category === 'CATEGORY A' && isReported) {
+          weekCatACount++;
+          if (box > 0) weekCatAOn++;
+          else weekCatAOff++;
+        }
       } else {
         if (r.totalReported > 0) reportedCount++;
         if (r.videoPayment > 0) weekVideoNetworks++;
@@ -167,14 +205,33 @@ export function OverviewView({
       }
     }
 
+    const weekOfflineCount = Math.max(0, activeRecords.length - weekOnlineCount);
+
     return {
       activeCount: activeRecords.length,
       activeOnlinePct: Math.round((stats.onlineCount / activeTotal) * 100),
+      weekOnlineCount,
+      weekOfflineCount,
+      weekOnlinePct: Math.round((weekOnlineCount / activeTotal) * 100),
       reportedCount,
       reportedPct: Math.round((reportedCount / activeTotal) * 100),
       pendingCount,
       pendingPct: Math.round((pendingCount / activeTotal) * 100),
       weekVideoNetworks,
+      weekDoneCount: weekVideoNetworks,
+      weekDoneA,
+      weekDoneB,
+      weekDoneOthers,
+      weekDonePct: Math.round((weekVideoNetworks / activeTotal) * 1000) / 10,
+      weekPendingAll: pendingCount,
+      weekPendingA,
+      weekPendingBO,
+      weekPendingPct: Math.round((pendingCount / activeTotal) * 1000) / 10,
+      weekCatACount,
+      weekCatAOn,
+      weekCatAOff,
+      weekCatAPct:
+        reportedCount > 0 ? Math.round((weekCatACount / reportedCount) * 100) : 0,
       boxConfirmedPct:
         stats.totalNetworks > 0
           ? Math.round((stats.boxYesCount / stats.totalNetworks) * 100)
@@ -192,6 +249,14 @@ export function OverviewView({
     stats.totalNetworks > 0
       ? Math.round((stats.videoPendingCount / stats.totalNetworks) * 100)
       : 0;
+  const weekVideoPendingPct =
+    stats.totalNetworks > 0
+      ? Math.round((stats.activeWeekPendingVideos / stats.totalNetworks) * 100)
+      : 0;
+  const weekVideoDoneAllCount = Math.max(
+    0,
+    records.length - stats.activeWeekPendingVideos,
+  );
   const monthTitle = monthScope === 'nov2026' ? 'November' : 'October';
 
   const maxWeeklyVal = Math.max(
@@ -222,14 +287,20 @@ export function OverviewView({
 
         <div className="bg-white border border-slate-200/90 border-t-[3px] border-t-emerald-500 rounded-xl p-5">
           <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-            <span>Online Boxes</span>
+            <span>
+              {activeWeekMeta ? `Online Boxes Week ${activeWeekMeta.weekNumber}` : 'Online Boxes'}
+            </span>
             <Wifi className="w-4 h-4 text-emerald-600" />
           </div>
           <div className="mt-2.5 text-3xl font-bold font-mono tabular-nums text-slate-900">
-            {formatNumber(stats.onlineCount)}
+            {formatNumber(
+              activeWeekMeta ? kpiDerived.weekOnlineCount : stats.onlineCount,
+            )}
           </div>
           <div className="mt-2 text-xs text-slate-500 font-mono tabular-nums">
-            {kpiDerived.activeOnlinePct}% of active · {stats.offlineCount} offline
+            {activeWeekMeta
+              ? `${kpiDerived.weekOnlinePct}% of active · ${formatNumber(kpiDerived.weekOfflineCount)} offline`
+              : `${kpiDerived.activeOnlinePct}% of active · ${stats.offlineCount} offline`}
           </div>
         </div>
 
@@ -470,10 +541,14 @@ export function OverviewView({
         <section className="bg-white border border-slate-200/90 rounded-xl p-5 flex flex-col justify-between">
           <div>
             <h2 className="text-sm font-semibold text-slate-900">
-              {monthTitle} Billing & Category Mix
+              {activeWeekMeta
+                ? `${monthTitle} · ${activeWeekMeta.wkLabel} Billing & Category Mix`
+                : `${monthTitle} Billing & Category Mix`}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Billing attainment across {formatNumber(stats.activeAchieveCount)} active networks
+              {activeWeekMeta
+                ? `${activeWeekMeta.shortLabel} (${activeWeekMeta.rangeLabel}) attainment across ${formatNumber(stats.activeAchieveCount)} active networks`
+                : `Billing attainment across ${formatNumber(stats.activeAchieveCount)} active networks`}
             </p>
 
             <div className="mt-4 space-y-3">
@@ -491,17 +566,27 @@ export function OverviewView({
               >
                 <div className="flex justify-between gap-2 text-xs mb-1">
                   <span className="font-medium text-emerald-800 truncate">
-                    Billing Done (Cat A {stats.billingDoneA} · B {stats.billingDoneB} · Oth{' '}
-                    {stats.billingDoneOthers})
+                    {activeWeekMeta ? `${activeWeekMeta.wkLabel} Done` : 'Billing Done'} (Cat A{' '}
+                    {activeWeekMeta ? kpiDerived.weekDoneA : stats.billingDoneA} · B{' '}
+                    {activeWeekMeta ? kpiDerived.weekDoneB : stats.billingDoneB} · Oth{' '}
+                    {activeWeekMeta ? kpiDerived.weekDoneOthers : stats.billingDoneOthers})
                   </span>
                   <span className="font-mono tabular-nums text-emerald-700 font-semibold shrink-0">
-                    {formatNumber(stats.billingDoneCount)} ({billingDoneActivePct}%)
+                    {formatNumber(
+                      activeWeekMeta ? kpiDerived.weekDoneCount : stats.billingDoneCount,
+                    )}{' '}
+                    ({activeWeekMeta ? kpiDerived.weekDonePct : billingDoneActivePct}%)
                   </span>
                 </div>
                 <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-emerald-600 transition-all"
-                    style={{ width: `${Math.min(100, billingDoneActivePct)}%` }}
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        activeWeekMeta ? kpiDerived.weekDonePct : billingDoneActivePct,
+                      )}%`,
+                    }}
                   />
                 </div>
               </button>
@@ -520,17 +605,26 @@ export function OverviewView({
               >
                 <div className="flex justify-between gap-2 text-xs mb-1">
                   <span className="font-medium text-amber-800 truncate">
-                    Billing Pending (Cat A {stats.billingPendingActiveA} · B/Oth{' '}
-                    {stats.billingPendingActiveBO})
+                    {activeWeekMeta ? `${activeWeekMeta.wkLabel} Pending` : 'Billing Pending'} (Cat A{' '}
+                    {activeWeekMeta ? kpiDerived.weekPendingA : stats.billingPendingActiveA} · B/Oth{' '}
+                    {activeWeekMeta ? kpiDerived.weekPendingBO : stats.billingPendingActiveBO})
                   </span>
                   <span className="font-mono tabular-nums text-amber-700 font-semibold shrink-0">
-                    {formatNumber(stats.billingPendingActiveAll)} ({billingPendingActivePct}%)
+                    {formatNumber(
+                      activeWeekMeta ? kpiDerived.weekPendingAll : stats.billingPendingActiveAll,
+                    )}{' '}
+                    ({activeWeekMeta ? kpiDerived.weekPendingPct : billingPendingActivePct}%)
                   </span>
                 </div>
                 <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-amber-500 transition-all"
-                    style={{ width: `${Math.min(100, billingPendingActivePct)}%` }}
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        activeWeekMeta ? kpiDerived.weekPendingPct : billingPendingActivePct,
+                      )}%`,
+                    }}
                   />
                 </div>
               </button>
@@ -538,7 +632,11 @@ export function OverviewView({
 
             <div className="mt-5 pt-4 border-t border-slate-100 space-y-3">
               <div className="text-xs font-medium text-slate-600">
-                Roster & Network Status ({formatNumber(stats.totalNetworks)} Total)
+                Roster & Network Status (
+                {activeWeekMeta
+                  ? `${formatNumber(kpiDerived.reportedCount)} ${activeWeekMeta.wkLabel} Active / ${formatNumber(stats.totalNetworks)} Total`
+                  : `${formatNumber(stats.totalNetworks)} Total`}
+                )
               </div>
 
               <button
@@ -556,17 +654,26 @@ export function OverviewView({
                 <div className="flex justify-between text-xs mb-1">
                   <span className="font-medium text-slate-800">Category A Networks</span>
                   <span className="font-mono tabular-nums text-slate-700">
-                    {formatNumber(stats.catAActiveCount)} ({catAPct}%)
+                    {formatNumber(
+                      activeWeekMeta ? kpiDerived.weekCatACount : stats.catAActiveCount,
+                    )}{' '}
+                    ({activeWeekMeta ? kpiDerived.weekCatAPct : catAPct}%)
                   </span>
                 </div>
                 <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-indigo-600 transition-all"
-                    style={{ width: `${Math.min(100, catAPct)}%` }}
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        activeWeekMeta ? kpiDerived.weekCatAPct : catAPct,
+                      )}%`,
+                    }}
                   />
                 </div>
                 <div className="text-[11px] font-mono text-slate-400 mt-0.5">
-                  {stats.catAOnline} ON · {stats.catAOffline} OFF
+                  {activeWeekMeta ? kpiDerived.weekCatAOn : stats.catAOnline} ON ·{' '}
+                  {activeWeekMeta ? kpiDerived.weekCatAOff : stats.catAOffline} OFF
                 </div>
               </button>
 
@@ -578,17 +685,34 @@ export function OverviewView({
                 <div className="flex justify-between text-xs mb-1">
                   <span className="font-medium text-slate-800">Pending Video Networks</span>
                   <span className="font-mono tabular-nums text-slate-700">
-                    {formatNumber(stats.videoPendingCount)} ({videoPendingPct}%)
+                    {formatNumber(
+                      activeWeekMeta
+                        ? stats.activeWeekPendingVideos
+                        : stats.videoPendingCount,
+                    )}{' '}
+                    ({activeWeekMeta ? weekVideoPendingPct : videoPendingPct}%)
                   </span>
                 </div>
                 <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-slate-500 transition-all"
-                    style={{ width: `${Math.min(100, videoPendingPct)}%` }}
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        activeWeekMeta ? weekVideoPendingPct : videoPendingPct,
+                      )}%`,
+                    }}
                   />
                 </div>
                 <div className="text-[11px] font-mono text-slate-400 mt-0.5">
-                  {formatNumber(stats.totalVideosVerified)} videos recorded · {formatNumber(stats.videoYesCount)} done
+                  {formatNumber(
+                    activeWeekMeta ? stats.activeWeekVideos : stats.totalVideosVerified,
+                  )}{' '}
+                  videos recorded ·{' '}
+                  {formatNumber(
+                    activeWeekMeta ? weekVideoDoneAllCount : stats.videoYesCount,
+                  )}{' '}
+                  done
                 </div>
               </button>
             </div>
@@ -600,7 +724,7 @@ export function OverviewView({
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
           <div>
             <h2 className="text-sm font-semibold text-slate-900">
-              35-Day Daily Landing Pulse ({pulseRangeTitle})
+              Monthly Landing Online ({pulseRangeTitle})
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               {activeWeekMeta
@@ -612,7 +736,7 @@ export function OverviewView({
             {hoveredDay !== null && stats.dailyHeatmap[hoveredDay] ? (
               <span>
                 {stats.dailyHeatmap[hoveredDay].dayName}{' '}
-                {stats.dailyHeatmap[hoveredDay].date}:{' '}
+                {formatDateDMY(stats.dailyHeatmap[hoveredDay].date)}:{' '}
                 <strong>{stats.dailyHeatmap[hoveredDay].onCount}</strong> ON
               </span>
             ) : (
