@@ -22,7 +22,7 @@ interface BillingExceptionsViewProps {
 type AuditScope =
   | 'pending_billing'
   | 'payable'
-  | 'four_week_100'
+  | 'all_weeks_bonus'
   | 'exceptions'
   | 'not_to_pay';
 
@@ -41,8 +41,8 @@ export function BillingExceptionsView({
   const weekOpts = getWeekOptionsForMonth(monthScope);
   const cycleWkLabel = `${weekOpts[0].wkLabel} – ${weekOpts[4].wkLabel}`;
 
-  const fourWeekBonusCount = useMemo(
-    () => records.filter((r) => r.isFourWeekBonus).length,
+  const allWeeksBonusCount = useMemo(
+    () => records.filter((r) => r.isAllWeeksBonus).length,
     [records],
   );
 
@@ -88,10 +88,10 @@ export function BillingExceptionsView({
           : records
               .filter((r) => r.finalAmountToPay > 0)
               .sort((a, b) => b.finalAmountToPay - a.finalAmountToPay);
-    } else if (scope === 'four_week_100') {
+    } else if (scope === 'all_weeks_bonus') {
       base = records
-        .filter((r) => r.isFourWeekBonus)
-        .sort((a, b) => b.videoWeeksCount - a.videoWeeksCount || b.videoPayment - a.videoPayment);
+        .filter((r) => r.isAllWeeksBonus)
+        .sort((a, b) => b.finalAmountToPay - a.finalAmountToPay || b.videoPayment - a.videoPayment);
     } else if (scope === 'not_to_pay') {
       base = records.filter((r) =>
         r.budgetLabel.toLowerCase().includes('not to pay'),
@@ -138,7 +138,7 @@ export function BillingExceptionsView({
           <div className="mt-1.5 text-xs text-slate-500 font-mono tabular-nums">
             {weekMeta
               ? `${formatNumber(stats.activeWeekVideos)} ${weekMeta.wkLabel} videos · Cycle ${formatCurrencyINR(stats.totalPayoutINR)}`
-              : `${formatNumber(records.filter((r) => r.finalAmountToPay > 0).length)} payable · ${formatNumber(fourWeekBonusCount)} @ ₹100 (4+ wks)`}
+              : `${formatNumber(records.filter((r) => r.finalAmountToPay > 0).length)} payable · ${formatNumber(allWeeksBonusCount)} all-week (₹100+₹15/extra)`}
           </div>
         </div>
 
@@ -265,8 +265,8 @@ export function BillingExceptionsView({
                   label: weekMeta ? `${weekMeta.wkLabel} Payable` : 'Payable Networks',
                 },
                 {
-                  id: 'four_week_100',
-                  label: `4+ Weeks ₹100 (${fourWeekBonusCount})`,
+                  id: 'all_weeks_bonus',
+                  label: `All Weeks ₹100+Extra (${allWeeksBonusCount})`,
                 },
                 { id: 'exceptions', label: 'With Remarks' },
                 { id: 'not_to_pay', label: 'Not To Pay (DTH)' },
@@ -365,11 +365,17 @@ export function BillingExceptionsView({
                         : wk
                           ? formatCurrencyINR(weekPay)
                           : (
-                            <span>
+                            <span
+                              title={
+                                row.isAllWeeksBonus
+                                  ? `All ${row.videoWeeksCount} weeks: ₹100 fixed + ${row.extraVideoCount} extra videos × ₹15 = ₹${row.finalAmountToPay}`
+                                  : undefined
+                              }
+                            >
                               {formatCurrencyINR(row.finalAmountToPay)}
-                              {row.isFourWeekBonus && (
+                              {row.isAllWeeksBonus && (
                                 <span className="ml-1.5 text-[10px] font-medium text-emerald-700">
-                                  ({row.videoWeeksCount}w)
+                                  (₹100 + {row.extraVideoCount}×₹15)
                                 </span>
                               )}
                             </span>

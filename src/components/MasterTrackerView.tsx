@@ -494,11 +494,18 @@ export function MasterTrackerView({
                         <td className="py-2 px-3 whitespace-nowrap">
                           <BillingIndicator status={row.asPerBilling} />
                         </td>
-                        <td className="py-2 px-3 text-right font-mono tabular-nums font-semibold text-slate-900 whitespace-nowrap">
+                        <td
+                          className="py-2 px-3 text-right font-mono tabular-nums font-semibold text-slate-900 whitespace-nowrap"
+                          title={
+                            row.isAllWeeksBonus
+                              ? `All ${row.videoWeeksCount} weeks: ₹100 fixed + ${row.extraVideoCount} extra videos × ₹15 = ₹${row.finalAmountToPay}`
+                              : undefined
+                          }
+                        >
                           {formatCurrencyINR(row.finalAmountToPay)}
-                          {row.isFourWeekBonus && (
+                          {row.isAllWeeksBonus && (
                             <span className="ml-1 text-[10px] font-medium text-emerald-700">
-                              4w
+                              All {row.videoWeeksCount}w
                             </span>
                           )}
                         </td>
@@ -631,11 +638,18 @@ export function MasterTrackerView({
                         <td className="py-2 px-3 text-right font-mono tabular-nums text-slate-600 whitespace-nowrap">
                           {row.budgetLabel}
                         </td>
-                        <td className="py-2 px-3 text-right font-mono tabular-nums font-semibold text-slate-900 whitespace-nowrap">
+                        <td
+                          className="py-2 px-3 text-right font-mono tabular-nums font-semibold text-slate-900 whitespace-nowrap"
+                          title={
+                            row.isAllWeeksBonus
+                              ? `All ${row.videoWeeksCount} weeks: ₹100 fixed + ${row.extraVideoCount} extra videos × ₹15 = ₹${row.finalAmountToPay}`
+                              : undefined
+                          }
+                        >
                           {formatCurrencyINR(row.finalAmountToPay)}
-                          {row.isFourWeekBonus && (
+                          {row.isAllWeeksBonus && (
                             <span className="ml-1 text-[10px] font-medium text-emerald-700">
-                              ({row.videoWeeksCount}w ₹100)
+                              (₹100 + {row.extraVideoCount}×₹15)
                             </span>
                           )}
                         </td>

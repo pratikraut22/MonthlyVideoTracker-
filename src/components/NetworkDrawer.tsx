@@ -125,12 +125,14 @@ export function NetworkDrawer({
             </div>
             <div className="p-3.5">
               <div className="text-xs text-slate-500">Final Amount To Pay</div>
-              <div className="mt-1 text-base font-semibold font-mono tabular-nums text-slate-900 inline-flex items-center gap-1">
-                <IndianRupee className="w-3.5 h-3.5 text-slate-400" />
-                {formatCurrencyINR(record.finalAmountToPay).replace('₹', '')}
+              <div className="mt-1 text-base font-semibold font-mono tabular-nums text-slate-900 inline-flex flex-wrap items-center gap-1">
+                <span className="inline-flex items-center gap-0.5">
+                  <IndianRupee className="w-3.5 h-3.5 text-slate-400" />
+                  {formatCurrencyINR(record.finalAmountToPay).replace('₹', '')}
+                </span>
                 <span className="text-xs font-normal text-slate-500">
-                  {record.isFourWeekBonus
-                    ? `(${record.videoWeeksCount}w ₹100 rule · base ₹${record.baseAmountToPay})`
+                  {record.isAllWeeksBonus
+                    ? `(All ${record.videoWeeksCount}w: ₹100 + ${record.extraVideoCount} extra×₹15)`
                     : `(${record.budgetLabel})`}
                 </span>
               </div>

@@ -152,11 +152,11 @@ export function DthSonyView({
           </button>
         </div>
 
-        <div className="text-xs font-mono text-slate-500">
-          {subTab === 'dth'
-            ? 'Rule: “-” = NOT TO PAY · AIRTEL UP & AIRTEL (TAMILNADU) NOT TO PAY'
-            : `${weekMeta ? `${weekMeta.wkLabel} ` : ''}Sony DPO spots: ${sonyTotalCount}`}
-        </div>
+        {subTab === 'sony' && (
+          <div className="text-xs font-mono text-slate-500">
+            {`${weekMeta ? `${weekMeta.wkLabel} ` : ''}Sony DPO spots: ${sonyTotalCount}`}
+          </div>
+        )}
       </div>
 
       {subTab === 'dth' ? (
@@ -203,7 +203,7 @@ export function DthSonyView({
                     <div key={op} className="flex justify-between">
                       <span className="text-slate-700 font-medium">{op}</span>
                       <span className="text-slate-600">
-                        {info.logs} logs · {formatCurrencyINR(info.amount)}
+                        {info.logs} videos · {formatCurrencyINR(info.amount)}
                       </span>
                     </div>
                   ))

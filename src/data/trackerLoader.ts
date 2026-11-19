@@ -332,11 +332,15 @@ export function parseMasterGrid(rows: string[][]): {
     const isSingleMonthlyVideo =
       videoPayment === 1 || (videoWeeksCount === 1 && videoPayment <= 1);
     const hasMultiWeekVideo = videoWeeksCount >= 2;
-    const isFourWeekBonus = !isNotToPay && videoWeeksCount >= 4;
+    const isAllWeeksBonus =
+      !isNotToPay && weeks.length > 0 && videoWeeksCount === weeks.length;
+    const extraVideoCount = isAllWeeksBonus
+      ? weeks.reduce((sum, w) => sum + Math.max(0, w.videoCount - 1), 0)
+      : 0;
     const finalAmountToPay = isNotToPay
       ? 0
-      : isFourWeekBonus
-        ? Math.max(100, baseAmountToPay)
+      : isAllWeeksBonus
+        ? 100 + extraVideoCount * 15
         : baseAmountToPay;
 
     records.push({
@@ -372,7 +376,8 @@ export function parseMasterGrid(rows: string[][]): {
       baseAmountToPay,
       finalAmountToPay,
       videoWeeksCount,
-      isFourWeekBonus,
+      extraVideoCount,
+      isAllWeeksBonus,
       barcVideoPayment: parseNum(row[109]),
       barcStatus: cleanStr(row[110]).toUpperCase() || 'PENDING',
     });

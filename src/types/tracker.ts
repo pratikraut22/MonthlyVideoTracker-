@@ -52,7 +52,8 @@ export interface MasterNetworkRecord {
   baseAmountToPay: number;
   finalAmountToPay: number;
   videoWeeksCount: number;
-  isFourWeekBonus: boolean;
+  extraVideoCount: number;
+  isAllWeeksBonus: boolean;
   barcVideoPayment: number;
   barcStatus: string;
 }
