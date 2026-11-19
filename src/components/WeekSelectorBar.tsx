@@ -142,7 +142,7 @@ export function WeekSelectorBar({
           </span>
         ) : (
           <span>
-            Cycle: {cycleRangeLabel || fallbackRange}
+            Cycle: {(cycleRangeLabel || fallbackRange).replace(/\(\d+\s*days\)/i, '(Monthly)')}
             {isNov && novActiveWeekHint ? ` · ${novActiveWeekHint} Live` : ''}
           </span>
         )}

@@ -502,12 +502,12 @@ export function computeOverviewStats(
   for (const st of stateMap.values()) {
     st.sharePct =
       totalRecordCount > 0
-        ? Math.round((st.total / totalRecordCount) * 1000) / 10
+        ? Math.round((st.total / totalRecordCount) * 10000) / 100
         : 0;
     const completed =
       wkIdx !== null ? st.selectedWeekVideoNetworks : st.billingDone;
     st.attainmentPct =
-      st.total > 0 ? Math.round((completed / st.total) * 100) : 0;
+      st.total > 0 ? Math.round((completed / st.total) * 10000) / 100 : 0;
   }
 
   const operatorStats = Array.from(opMap.values()).sort((a, b) =>

@@ -153,6 +153,7 @@ export function OverviewView({
     let pendingCount = 0;
     let weekVideoNetworks = 0;
     let weekOnlineCount = 0;
+    let monthOnlineCount = 0;
     let weekDoneA = 0;
     let weekDoneB = 0;
     let weekDoneOthers = 0;
@@ -186,6 +187,9 @@ export function OverviewView({
           else weekCatAOff++;
         }
       } else {
+        if (r.totalOnDays > 0 || r.weeks.some((w) => w.boxCount > 0)) {
+          monthOnlineCount++;
+        }
         if (r.totalReported > 0) reportedCount++;
         if (r.videoPayment > 0) weekVideoNetworks++;
         else pendingCount++;
@@ -193,10 +197,14 @@ export function OverviewView({
     }
 
     const weekOfflineCount = Math.max(0, activeRecords.length - weekOnlineCount);
+    const monthOfflineCount = Math.max(0, activeRecords.length - monthOnlineCount);
 
     return {
       activeCount: activeRecords.length,
       activeOnlinePct: Math.round((stats.onlineCount / activeTotal) * 100),
+      monthOnlineCount,
+      monthOfflineCount,
+      monthOnlinePct: Math.round((monthOnlineCount / activeTotal) * 100),
       weekOnlineCount,
       weekOfflineCount,
       weekOnlinePct: Math.round((weekOnlineCount / activeTotal) * 100),
@@ -281,13 +289,13 @@ export function OverviewView({
           </div>
           <div className="mt-2.5 text-3xl font-bold font-mono tabular-nums text-slate-900">
             {formatNumber(
-              activeWeekMeta ? kpiDerived.weekOnlineCount : stats.onlineCount,
+              activeWeekMeta ? kpiDerived.weekOnlineCount : kpiDerived.monthOnlineCount,
             )}
           </div>
           <div className="mt-2 text-xs text-slate-500 font-mono tabular-nums">
             {activeWeekMeta
               ? `${kpiDerived.weekOnlinePct}% of active · ${formatNumber(kpiDerived.weekOfflineCount)} offline`
-              : `${kpiDerived.activeOnlinePct}% of active · ${stats.offlineCount} offline`}
+              : `${kpiDerived.monthOnlinePct}% of active · ${formatNumber(kpiDerived.monthOfflineCount)} offline`}
           </div>
         </div>
 
