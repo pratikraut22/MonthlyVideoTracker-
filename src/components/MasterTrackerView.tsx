@@ -10,6 +10,8 @@ import type { MasterNetworkRecord, MonthScope, WeekFilter } from '../types/track
 import {
   exportRecordsToCsv,
   formatCurrencyINR,
+  formatDateDMY,
+  formatVideoDateCell,
   getWeekIndex,
   getWeekMeta,
   getWeekOptionsForMonth,
@@ -332,19 +334,22 @@ export function MasterTrackerView({
 
                 {mode === 'daily' && (
                   <>
-                    {visibleDailySlice.headers.map((dh, idx) => (
-                      <th
-                        key={dh.date || idx}
-                        className={`py-2 px-1.5 text-center font-mono text-[10px] font-medium whitespace-nowrap ${
-                          idx % 7 === 0 ? 'border-l border-slate-200' : ''
-                        }`}
-                        title={`${dh.dayName} ${dh.date}`}
-                      >
-                        {weekIdx !== null
-                          ? `${dh.dayName.slice(0, 3)} ${dh.date.replace('/2026', '')}`
-                          : dh.date.replace('/2026', '')}
-                      </th>
-                    ))}
+                    {visibleDailySlice.headers.map((dh, idx) => {
+                      const dmyDate = formatDateDMY(dh.date);
+                      return (
+                        <th
+                          key={dh.date || idx}
+                          className={`py-2 px-1.5 text-center font-mono text-[10px] font-medium whitespace-nowrap ${
+                            idx % 7 === 0 ? 'border-l border-slate-200' : ''
+                          }`}
+                          title={`${dh.dayName} ${dmyDate}`}
+                        >
+                          {weekIdx !== null
+                            ? `${dh.dayName.slice(0, 3)} ${dmyDate}`
+                            : dmyDate}
+                        </th>
+                      );
+                    })}
                     <th className="py-2.5 px-3 text-right font-medium whitespace-nowrap">
                       {weekMeta ? `${weekMeta.wkLabel} ON` : 'ON Days'}
                     </th>
@@ -462,7 +467,13 @@ export function MasterTrackerView({
                               {activeWk.videoCount}
                             </td>
                             <td className="py-2 px-3 font-mono text-[11px] text-slate-600 max-w-[170px] truncate">
-                              {[activeWk.video1, activeWk.remark, activeWk.weekRemark]
+                              {[
+                                activeWk.video1
+                                  ? formatVideoDateCell(activeWk.video1, weekIdx!, monthScope)
+                                  : '',
+                                activeWk.remark,
+                                activeWk.weekRemark,
+                              ]
                                 .filter(Boolean)
                                 .join(' · ') || '—'}
                             </td>
@@ -502,7 +513,7 @@ export function MasterTrackerView({
                             className={`py-2 px-1 text-center ${
                               idx % 7 === 0 ? 'border-l border-slate-200' : ''
                             }`}
-                            title={`${d.date} (${d.dayName}): ${d.on ? 'ON' : 'OFF'}`}
+                            title={`${formatDateDMY(d.date)} (${d.dayName}): ${d.on ? 'ON' : 'OFF'}`}
                           >
                             <span
                               className={`inline-block w-3 h-3 rounded-xs ${
@@ -532,16 +543,28 @@ export function MasterTrackerView({
                               {activeWk.videoCount}
                             </td>
                             <td className="py-2 px-3 font-mono tabular-nums text-slate-600 whitespace-nowrap">
-                              {activeWk.video1 || '—'}
+                              {activeWk.video1
+                                ? formatVideoDateCell(activeWk.video1, weekIdx!, monthScope)
+                                : '—'}
                             </td>
                             <td className="py-2 px-3 font-mono tabular-nums text-slate-600 whitespace-nowrap">
-                              {activeWk.video2 || '—'}
+                              {activeWk.video2
+                                ? formatVideoDateCell(activeWk.video2, weekIdx!, monthScope)
+                                : '—'}
                             </td>
                             <td className="py-2 px-3 font-mono tabular-nums text-slate-600 whitespace-nowrap">
-                              {activeWk.video3 || '—'}
+                              {activeWk.video3
+                                ? formatVideoDateCell(activeWk.video3, weekIdx!, monthScope)
+                                : '—'}
                             </td>
                             <td className="py-2 px-3 text-amber-800 max-w-[200px] truncate">
-                              {[activeWk.date, activeWk.remark, activeWk.weekRemark]
+                              {[
+                                activeWk.date
+                                  ? formatVideoDateCell(activeWk.date, weekIdx!, monthScope)
+                                  : '',
+                                activeWk.remark,
+                                activeWk.weekRemark,
+                              ]
                                 .filter(Boolean)
                                 .join(' · ') || '—'}
                             </td>
@@ -550,7 +573,7 @@ export function MasterTrackerView({
                             </td>
                           </>
                         ) : (
-                          row.weeks.map((w) => (
+                          row.weeks.map((w, wIdx) => (
                             <td
                               key={w.weekNumber}
                               className="py-2 px-3 border-l border-slate-200 font-mono tabular-nums whitespace-nowrap"
@@ -568,7 +591,7 @@ export function MasterTrackerView({
                               </span>
                               {w.video1 && (
                                 <span className="text-slate-500 ml-1.5 text-[11px]">
-                                  {w.video1}
+                                  {formatVideoDateCell(w.video1, wIdx, monthScope)}
                                 </span>
                               )}
                               {w.remark && (

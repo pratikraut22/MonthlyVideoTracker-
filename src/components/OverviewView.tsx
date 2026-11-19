@@ -19,6 +19,7 @@ import type {
 import {
   type ComputedOverviewStats,
   formatCurrencyINR,
+  formatDateDMY,
   formatNumber,
   getWeekIndex,
   getWeekMeta,
@@ -53,20 +54,6 @@ type OpSortKey =
   | 'selectedWeekBox'
   | 'selectedWeekVideos'
   | 'selectedWeekPayoutINR';
-
-function formatDateDMY(dateStr: string): string {
-  const parts = dateStr.trim().split('/');
-  if (parts.length !== 3) return dateStr.trim();
-  const p0 = Number(parts[0]);
-  const p1 = Number(parts[1]);
-  const year = parts[2].trim();
-  if (!Number.isFinite(p0) || !Number.isFinite(p1) || !year) {
-    return dateStr.trim();
-  }
-  const day = p0 > 12 ? p0 : p1;
-  const month = p0 > 12 ? p1 : p0;
-  return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
-}
 
 export function OverviewView({
   stats,

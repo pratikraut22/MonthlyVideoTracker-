@@ -31,19 +31,19 @@ const OCT_OPERATOR_SHEETS: Record<string, string> = {
 };
 
 const NOV_OPERATOR_SHEETS: Record<string, string> = {
-  ARBIND: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-ARBIND_5d83693d.csv',
-  CHIRAG: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-CHIRAG_8433c0cb.csv',
-  MUKESH: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-MUKESH_e4af53a0.csv',
-  NARENDRA: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-NARENDRA_11e9058e.csv',
-  NITIN: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-NITIN_22a00ccb.csv',
-  SAI: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SAI_6c9241b9.csv',
-  SAMEER: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SAMEER_969968e8.csv',
-  SANDEEP: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SANDEEP_64c5eccd.csv',
-  SHIVA: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SHIVA_8f5efff6.csv',
-  STALIN: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-STALIN_450e971f.csv',
-  SUNIL: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SUNIL_1a7ec07f.csv',
-  VARUN: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-VARUN_b8f1beb5.csv',
-  VINIT: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-VINIT_8a8f159b.csv',
+  ARBIND: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-ARBIND_a835551c.csv',
+  CHIRAG: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-CHIRAG_79309de2.csv',
+  MUKESH: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-MUKESH_7e3bb7af.csv',
+  NARENDRA: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-NARENDRA_5b4f0b1c.csv',
+  NITIN: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-NITIN_c39b402e.csv',
+  SAI: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SAI_4ddd7125.csv',
+  SAMEER: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SAMEER_6b4121a9.csv',
+  SANDEEP: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SANDEEP_5d46d693.csv',
+  SHIVA: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SHIVA_61715fcd.csv',
+  STALIN: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-STALIN_e3065c71.csv',
+  SUNIL: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SUNIL_df5a6b14.csv',
+  VARUN: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-VARUN_cd5333f5.csv',
+  VINIT: '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-VINIT_125973a8.csv',
 };
 
 const OCT_MASTER_URL =
@@ -56,11 +56,11 @@ const OCT_SONY_URL =
   '/assets/aistudio/Monthly_Video_Tracker_-October_2026_-_Landing-SONY_ACTIVITY_2e80cf36.csv';
 
 const NOV_MASTER_URL =
-  '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-Master_d3935dcd.csv';
+  '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-Master_da40822a.csv';
 const NOV_DASHBOARD_URL =
-  '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-DASHBOARD_cf651e91.csv';
+  '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-DASHBOARD_1144ea80.csv';
 const NOV_DTH_URL =
-  '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-DTH_13f91917.csv';
+  '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-DTH_10fe8adc.csv';
 const NOV_SONY_URL =
   '/assets/aistudio/Monthly_Video_Tracker_-November_2026_-_Landing-SONY_ACTIVITY_2e80cf36.csv';
 

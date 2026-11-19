@@ -787,21 +787,6 @@ export function exportDashboardSnapshotToCsv(
   URL.revokeObjectURL(url);
 }
 
-const SHORT_MONTHS = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-
 function getWeekUtcWindow(
   wkIdx: number,
   monthScope: MonthScope,
@@ -836,10 +821,47 @@ function buildValidUtcTs(year: number, month: number, day: number): number | nul
 
 export function formatUtcTimestamp(ts: number): string {
   const dt = new Date(ts);
-  const d = dt.getUTCDate();
-  const m = SHORT_MONTHS[dt.getUTCMonth()] ?? '';
+  const d = String(dt.getUTCDate()).padStart(2, '0');
+  const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
   const y = dt.getUTCFullYear();
-  return `${d} ${m} ${y}`;
+  return `${d}/${m}/${y}`;
+}
+
+export function formatDateDMY(dateStr: string): string {
+  const clean = dateStr.trim();
+  if (!clean) return '';
+  const isoMatch = clean.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (isoMatch) {
+    const [, y, m, d] = isoMatch;
+    return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
+  }
+  const parts = clean.split(/[-/.]/);
+  if (parts.length !== 3) return clean;
+  const p0 = Number(parts[0]);
+  const p1 = Number(parts[1]);
+  let year = parts[2].trim();
+  if (!Number.isFinite(p0) || !Number.isFinite(p1) || !year) {
+    return clean;
+  }
+  if (year === '206') year = '2026';
+  else if (year.length === 2) year = `20${year}`;
+  const day = p0 > 12 ? p0 : p1;
+  const month = p0 > 12 ? p1 : p0;
+  return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+}
+
+export function formatVideoDateCell(
+  raw: string,
+  wkIdx: number,
+  monthScope: MonthScope,
+): string {
+  const clean = raw.trim();
+  if (!clean) return '';
+  const parsed = parseWeekVideoDates([clean], wkIdx, monthScope);
+  if (parsed.length > 0) {
+    return parsed.map(formatUtcTimestamp).join(', ');
+  }
+  return formatDateDMY(clean);
 }
 
 export function formatUtcIsoKey(ts: number): string {

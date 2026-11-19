@@ -1,7 +1,12 @@
 import { useEffect } from 'react';
 import { Calendar, Check, Cpu, IndianRupee, MapPin, Minus, User, X } from 'lucide-react';
 import type { MasterNetworkRecord } from '../types/tracker';
-import { formatCurrencyINR, getRecordLastVideoInfo } from '../utils/analytics';
+import {
+  formatCurrencyINR,
+  formatDateDMY,
+  formatVideoDateCell,
+  getRecordLastVideoInfo,
+} from '../utils/analytics';
 import { BillingIndicator, NetworkTypeIndicator } from './StatusText';
 
 interface NetworkDrawerProps {
@@ -163,8 +168,8 @@ export function NetworkDrawer({
                         <div className="text-[10px] font-medium uppercase tracking-wide">
                           {day.dayName.slice(0, 3)}
                         </div>
-                        <div className="text-[11px] font-mono tabular-nums mt-0.5">
-                          {day.date.replace('/2026', '')}
+                        <div className="text-[10px] font-mono tabular-nums mt-0.5">
+                          {formatDateDMY(day.date)}
                         </div>
                         <div className="mt-1 flex justify-center">
                           {day.on ? (
@@ -197,8 +202,13 @@ export function NetworkDrawer({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {record.weeks.map((wk) => {
-                    const dates = [wk.video1, wk.video2, wk.video3].filter(Boolean);
+                  {record.weeks.map((wk, wkIdx) => {
+                    const dates = [wk.video1, wk.video2, wk.video3]
+                      .filter(Boolean)
+                      .map((d) => formatVideoDateCell(d, wkIdx, monthScope));
+                    const fallbackDate = wk.date
+                      ? formatVideoDateCell(wk.date, wkIdx, monthScope)
+                      : '';
                     const combinedRemark = [wk.remark, wk.weekRemark]
                       .filter(Boolean)
                       .join(' · ');
@@ -215,7 +225,7 @@ export function NetworkDrawer({
                           {wk.videoCount}
                         </td>
                         <td className="py-2.5 px-3 font-mono tabular-nums text-slate-600">
-                          {dates.length ? dates.join(', ') : wk.date || '—'}
+                          {dates.length ? dates.join(', ') : fallbackDate || '—'}
                         </td>
                         <td className="py-2.5 px-3 text-slate-600">
                           {combinedRemark || '—'}

@@ -3,6 +3,7 @@ import { Clock, IndianRupee, Search, Tv } from 'lucide-react';
 import type { DthLogEntry, MonthScope, SonyActivityRow, WeekFilter } from '../types/tracker';
 import {
   formatCurrencyINR,
+  formatDateDMY,
   getWeekMeta,
   getWeekNumberForDate,
 } from '../utils/analytics';
@@ -13,20 +14,6 @@ interface DthSonyViewProps {
   sonyActivity: SonyActivityRow[];
   selectedWeek: WeekFilter;
   monthScope: MonthScope;
-}
-
-function formatDthDateDMY(dateStr: string): string {
-  const parts = dateStr.trim().split('/');
-  if (parts.length !== 3) return dateStr.trim();
-  const p0 = Number(parts[0]);
-  const p1 = Number(parts[1]);
-  const year = parts[2].trim();
-  if (!Number.isFinite(p0) || !Number.isFinite(p1) || !year) {
-    return dateStr.trim();
-  }
-  const day = p0 > 12 ? p0 : p1;
-  const month = p0 > 12 ? p1 : p0;
-  return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
 }
 
 export function DthSonyView({
@@ -99,7 +86,7 @@ export function DthSonyView({
     return weekScopedDth.filter((row) => {
       if (dthOp !== 'ALL' && row.operator !== dthOp) return false;
       if (q) {
-        const dmyDate = formatDthDateDMY(row.date);
+        const dmyDate = formatDateDMY(row.date);
         const hay = `${dmyDate} ${row.date} ${row.networkName} ${row.operator} ${row.rawAmount}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
@@ -274,7 +261,7 @@ export function DthSonyView({
                   {filteredDth.map((row) => (
                     <tr key={row.id} className="hover:bg-slate-50">
                       <td className="py-2 px-4 font-mono tabular-nums text-slate-600 whitespace-nowrap">
-                        {formatDthDateDMY(row.date)}
+                        {formatDateDMY(row.date)}
                       </td>
                       <td className="py-2 px-3 font-medium text-slate-900">
                         {row.networkName}
@@ -322,8 +309,8 @@ export function DthSonyView({
                 {weekMeta
                   ? activeSonyDates.length > 0
                     ? `Filtered to ${weekMeta.wkLabel} (${activeSonyDates.length} dates logged)`
-                    : `No Sony Activity dates logged during ${weekMeta.wkLabel} (Workbook Sony sheet logs ${sonyDates[0] ?? ''} – ${sonyDates[sonyDates.length - 1] ?? ''})`
-                  : `Daily landing counts recorded from ${sonyDates[0] ?? '21/10/2026'} to ${sonyDates[sonyDates.length - 1] ?? '30/10/2026'}`}
+                    : `No Sony Activity dates logged during ${weekMeta.wkLabel} (Workbook Sony sheet logs ${sonyDates[0] ? formatDateDMY(sonyDates[0]) : ''} – ${sonyDates[sonyDates.length - 1] ? formatDateDMY(sonyDates[sonyDates.length - 1]) : ''})`
+                  : `Daily landing counts recorded from ${sonyDates[0] ? formatDateDMY(sonyDates[0]) : '21/10/2026'} to ${sonyDates[sonyDates.length - 1] ? formatDateDMY(sonyDates[sonyDates.length - 1]) : '30/10/2026'}`}
               </p>
             </div>
             <span className="text-xs font-mono tabular-nums text-slate-600">
@@ -344,7 +331,7 @@ export function DthSonyView({
                       key={d}
                       className="py-2.5 px-2 text-center font-mono text-[11px] font-medium whitespace-nowrap"
                     >
-                      {d.replace('/2026', '')}
+                      {formatDateDMY(d)}
                     </th>
                   ))}
                   <th className="py-2.5 px-3 text-right font-medium">
