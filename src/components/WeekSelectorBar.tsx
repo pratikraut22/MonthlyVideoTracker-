@@ -31,6 +31,9 @@ export function WeekSelectorBar({
   const activeMeta = getWeekMeta(selectedWeek, monthScope);
   const isNov = monthScope === 'nov2026';
 
+  const activeNovWeekMatch = novActiveWeekHint.match(/W(\d+)/i);
+  const activeNovWeekIdx = activeNovWeekMatch ? Number(activeNovWeekMatch[1]) - 1 : 3;
+
   const fallbackRange = isNov
     ? 'Nov 2 – Dec 6, 2026 (35 days)'
     : 'Sep 28 – Nov 1, 2026 (35 days)';
@@ -106,7 +109,7 @@ export function WeekSelectorBar({
 
             {weekOptions.map((wk) => {
               const active = selectedWeek === wk.value;
-              const isFutureNovWeek = isNov && wk.index >= 3;
+              const isFutureNovWeek = isNov && wk.index > activeNovWeekIdx;
               return (
                 <button
                   key={wk.value}
@@ -138,7 +141,7 @@ export function WeekSelectorBar({
             Showing{' '}
             <strong className="text-slate-900">{activeMeta.wkLabel}</strong> ·{' '}
             <span className="text-slate-700">{activeMeta.rangeLabel}, 2026</span>
-            {isNov && activeMeta.index >= 3 ? ' (Upcoming)' : ''}
+            {isNov && activeMeta.index > activeNovWeekIdx ? ' (Upcoming)' : ''}
           </span>
         ) : (
           <span>
